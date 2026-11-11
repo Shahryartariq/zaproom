@@ -71,7 +71,9 @@ export function Call({ info, conn, media, onLeave, topExtra, onAlone, noShowMs }
         if (leftOnPurpose.current) return onLeave("You can rejoin while the room is open.");
         onLeave(disconnectMessage(reason));
       }}
-      onError={(e) => console.error("[call]", e)}
+      onError={(e) => {
+        if (!/client initiated/i.test(e.message)) console.error("[call]", e);
+      }}
     >
       <CallInner
         info={info}

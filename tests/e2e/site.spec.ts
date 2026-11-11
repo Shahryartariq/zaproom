@@ -279,6 +279,20 @@ test.describe("chat page", () => {
     await expect(page.locator("form").getByRole("alert")).toContainText("Calls aren't switched on");
   });
 
+  test("a first-time visitor joins once, not twice", async ({ page }) => {
+    let calls = 0;
+    await page.route("**/api/chat/token", async (route) => {
+      calls++;
+      await route.fulfill({ status: 503, json: { error: "off" } });
+    });
+    await page.goto("/chat");
+    await page.getByLabel("Your name").fill("Sherry");
+    await page.getByRole("button", { name: "Open chat" }).click();
+    await expect(page.locator("form").getByRole("alert")).toHaveText("off");
+    await page.waitForTimeout(500);
+    expect(calls).toBe(1);
+  });
+
   test("sends a stable device key with the request", async ({ page }) => {
     const bodies: { device?: string }[] = [];
     await page.route("**/api/chat/token", async (route) => {
