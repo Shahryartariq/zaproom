@@ -42,7 +42,7 @@ export function LiveRooms({ snapshot, failed }: { snapshot: LobbySnapshot | null
                   <Icon name={room.kind === "voice" ? "wave" : "cam"} /> {room.kind === "voice" ? "Voice" : "Video"}
                 </span>
                 {room.people.length > 0 ? (
-                  <span className="stack" aria-label={room.people.map((p) => p.name).join(", ")}>
+                  <span className="stack" role="img" aria-label={room.people.map((p) => p.name).join(", ")}>
                     {room.people.map((p, i) => (
                       <Avatar key={i} name={p.name} color={p.color} size="xs" />
                     ))}

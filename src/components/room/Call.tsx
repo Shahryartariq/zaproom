@@ -46,14 +46,24 @@ export function Call({ info, conn, media, onLeave, topExtra, onAlone, noShowMs }
     [],
   );
 
+  // Stable objects: LiveKitRoom re-applies capture options when these change.
+  const audio = useMemo(
+    () => (media.audio ? (media.audioDeviceId ? { deviceId: media.audioDeviceId } : true) : false),
+    [media.audio, media.audioDeviceId],
+  );
+  const video = useMemo(
+    () => (!voice && media.video ? (media.videoDeviceId ? { deviceId: media.videoDeviceId } : true) : false),
+    [voice, media.video, media.videoDeviceId],
+  );
+
   return (
     <LiveKitRoom
       className="call"
       serverUrl={conn.url}
       token={conn.token}
       connect
-      audio={media.audio ? (media.audioDeviceId ? { deviceId: media.audioDeviceId } : true) : false}
-      video={!voice && media.video ? (media.videoDeviceId ? { deviceId: media.videoDeviceId } : true) : false}
+      audio={audio}
+      video={video}
       options={roomOptions}
       onDisconnected={(reason) => {
         if (leftOnPurpose.current) return onLeave("You can rejoin while the room is open.");
