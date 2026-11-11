@@ -268,12 +268,14 @@ export function useChatEngine({ storageKey, groupName, announceJoins }: Options)
     [room, me, state.active, onlineIds],
   );
 
-  const lastTypingSent = useRef(0);
+  // Per conversation, so typing in the group doesn't silence a private chat right after.
+  const lastTypingSent = useRef<Record<string, number>>({});
   const sendTyping = useCallback(() => {
     const now = Date.now();
-    if (now - lastTypingSent.current < 2500) return;
-    lastTypingSent.current = now;
-    const to = isDm(state.active) ? peerOf(state.active) : undefined;
+    const key = state.active;
+    if (now - (lastTypingSent.current[key] ?? 0) < 2500) return;
+    lastTypingSent.current[key] = now;
+    const to = isDm(key) ? peerOf(key) : undefined;
     if (to && !onlineIds.has(to)) return;
     void room.localParticipant
       // Reliable: a few bytes every 2.5 s at most, and lossy delivery can be skipped

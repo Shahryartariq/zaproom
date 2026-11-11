@@ -5,6 +5,9 @@ import { expect, test, type Browser, type BrowserContext, type Page } from "@pla
  * Run with LIVEKIT_E2E=1 and the LIVEKIT_* variables set.
  */
 
+// Retries would meet people left over from the first attempt, so each test runs once.
+test.describe.configure({ retries: 0 });
+
 type Person = { ctx: BrowserContext; page: Page };
 
 async function person(browser: Browser, name: string, color: string): Promise<Person> {
