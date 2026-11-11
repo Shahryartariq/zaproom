@@ -17,9 +17,9 @@ Video, voice and text rooms in the browser. Pick a name, start a room, step into
 - **In the call:** speaking rings, mute indicators, connection quality bars, join and leave notices, an unread badge on chat, and clear messages when the connection drops or the room closes.
 - **Light, dark and match-device themes** with no flash on load, a layout that works down to phone size, keyboard support throughout, and reduced motion respected.
 
-| Lobby (light) | Pre-join | On a phone |
+| Live lobby | Light theme | On a phone |
 | --- | --- | --- |
-| ![Lobby in light theme](docs/screenshots/lobby-light.png) | ![Pre-join screen with camera preview](docs/screenshots/prejoin-dark.png) | ![Call on a phone](docs/screenshots/call-phone.png) |
+| ![Lobby listing two live rooms and who is inside](docs/screenshots/lobby-dark.png) | ![A four-person call in light theme with chat open](docs/screenshots/call-light.png) | ![A five-person call on a phone](docs/screenshots/call-phone.png) |
 
 ## How it works
 
