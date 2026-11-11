@@ -257,9 +257,27 @@ textarea {
   background: var(--surface);
 }
 
+.site-nav .short {
+  display: none;
+}
 @media (max-width: 520px) {
   .site-nav a[href="/"] {
     display: none;
+  }
+  .site-nav .long {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .site-nav .short {
+    display: inline;
+  }
+  .site-header {
+    gap: 8px;
+    padding-inline: 12px;
   }
   .site-nav a {
     padding: 8px 10px;

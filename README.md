@@ -6,6 +6,8 @@ Video, voice and text chat in the browser. Pick a name, start a room, step into 
 
 ![A Zaproom call with three people and the chat open](docs/screenshots/call-dark.png)
 
+![Global chat with private messages, unread counts, online people and seen ticks](docs/screenshots/chat-dark.png)
+
 ## What it does
 
 - **Rooms for up to 12 people** with video, voice, screen sharing (with tab audio), text chat and emoji reactions.
@@ -23,6 +25,10 @@ Video, voice and text chat in the browser. Pick a name, start a room, step into 
 | Live lobby | Light theme | On a phone |
 | --- | --- | --- |
 | ![Lobby listing two live rooms and who is inside](docs/screenshots/lobby-dark.png) | ![A four-person call in light theme with chat open](docs/screenshots/call-light.png) | ![A five-person call on a phone](docs/screenshots/call-phone.png) |
+
+| Chat on a phone | Notification settings |
+| --- | --- |
+| ![Chat list on a phone with the global chat and people online](docs/screenshots/chat-phone.png) | ![Settings with six notification sounds, volume and switches](docs/screenshots/settings-phone.png) |
 
 ## How it works
 
@@ -85,12 +91,12 @@ Without the LiveKit variables the site still runs and says that calls are switch
 
 ```bash
 pnpm lint && pnpm typecheck
-pnpm test            # unit: validation, room ids, matching, tickets, rate limits
+pnpm test            # unit: validation, room ids, matching, tickets, rate limits, chat packets and state, settings
 PW_CHROME=1 pnpm e2e # browser: lobby, forms, pre-join, themes, axe in both themes, headers, API guards (desktop + phone)
 pnpm e2e:call        # real calls: needs a LiveKit server and the env vars above
 ```
 
-CI runs everything on each pull request. The **calls** job starts `livekit-server --dev` in Docker, then two and three browser contexts with fake cameras and mics meet in a room. They check that video plays and audio is attached, chat goes both ways, mute and reactions show up, the lobby count updates and leaving works. A stranger match, a skip and a re-match are tested the same way. The screenshots above come from that job.
+CI runs everything on each pull request. The **calls** job starts `livekit-server --dev` in Docker, then two and three browser contexts with fake cameras and mics meet in a room. They check that video plays and audio is attached, chat goes both ways, mute and reactions show up, the lobby count updates and leaving works. A stranger match, a skip and a re-match are tested the same way. Text chat gets the same treatment: three people in the global chat, a private message that the third person never receives, typing, seen ticks, the notification sound, saved history after a reload, the one-tab rule, and a text room with join and leave notices. The screenshots above come from that job.
 
 ## Deploy
 
