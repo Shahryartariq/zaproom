@@ -65,7 +65,7 @@ export const createRoomSchema = z.object({
   title: roomTitleSchema,
   topic: roomTopicSchema.optional().default(""),
   visibility: z.enum(["public", "private"]),
-  kind: z.enum(["video", "voice"]),
+  kind: z.enum(["video", "voice", "text"]),
 });
 export type CreateRoomInput = z.input<typeof createRoomSchema>;
 

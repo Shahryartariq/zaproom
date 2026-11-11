@@ -13,7 +13,9 @@ import {
 import { ConnectionState, DisconnectReason, RoomEvent, Track, type Participant } from "livekit-client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../Icon";
+import { notify } from "../settings/notify";
 import { ControlBar } from "./ControlBar";
+import { CopyInvite } from "./CopyInvite";
 import { Reactions, useReactions } from "./Reactions";
 import { SidePanel, type PanelTab } from "./SidePanel";
 import { Tile } from "./Tile";
@@ -116,11 +118,11 @@ function CallInner({
   const participants = useParticipants();
   const { canPlayAudio, startAudio } = useAudioPlayback();
   const [panel, setPanel] = useState<PanelTab | null>(null);
-  const [copied, setCopied] = useState(false);
   const toasts = useJoinLeaveToasts();
   const reactions = useReactions();
   const chat = useChat();
   const unread = useUnread(chat.chatMessages, panel === "chat", room.localParticipant.identity);
+  useChatSound(chat.chatMessages, panel === "chat", room.localParticipant.identity, info.title);
 
   const tracks = useTracks(
     [
@@ -145,18 +147,6 @@ function CallInner({
     }, noShowMs);
     return () => clearTimeout(timer);
   }, [noShowMs, onAlone]);
-
-  async function copyInvite() {
-    const url = `${location.origin}/r/${info.id}`;
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
-      window.prompt("Copy this link", url);
-      return;
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
 
   function leave() {
     markLeaving();
@@ -183,12 +173,7 @@ function CallInner({
           </span>
         ) : null}
         <span className="spacer" />
-        {!stranger ? (
-          <button className="btn ghost" onClick={copyInvite} aria-live="polite">
-            <Icon name={copied ? "check" : "link"} />
-            <span className="text">{copied ? "Link copied" : "Copy invite link"}</span>
-          </button>
-        ) : null}
+        {!stranger ? <CopyInvite roomId={info.id} /> : null}
         {topExtra}
       </div>
 
@@ -266,4 +251,22 @@ function useUnread(messages: { id: string; from?: Participant }[], open: boolean
   if (open && seen !== total) setSeen(total);
   if (open) return 0;
   return messages.slice(seen).filter((m) => m.from?.identity !== me).length;
+}
+
+/** Plays the notification sound for chat messages that arrive while chat is closed. */
+function useChatSound(messages: { id: string; message: string; from?: Participant }[], open: boolean, me: string, room: string) {
+  const seen = useRef(messages.length);
+  useEffect(() => {
+    const fresh = messages.slice(seen.current);
+    seen.current = messages.length;
+    const last = fresh.filter((m) => m.from?.identity !== me).at(-1);
+    if (!last) return;
+    notify({
+      kind: "call",
+      watching: open && document.visibilityState === "visible",
+      title: `${last.from?.name || "Someone"} in ${room}`,
+      body: last.message,
+      tag: `call-${room}`,
+    });
+  }, [messages, open, me, room]);
 }

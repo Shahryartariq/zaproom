@@ -14,7 +14,7 @@ export function StartRoomForm({ disabled }: { disabled: boolean }) {
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState("");
   const [visibility, setVisibility] = useState<"public" | "private">("public");
-  const [kind, setKind] = useState<"video" | "voice">("video");
+  const [kind, setKind] = useState<"video" | "voice" | "text">("video");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -96,7 +96,8 @@ export function StartRoomForm({ disabled }: { disabled: boolean }) {
         onChange={setKind}
         options={[
           { value: "video", label: "Video", icon: "cam" },
-          { value: "voice", label: "Voice only", icon: "wave" },
+          { value: "voice", label: "Voice", icon: "wave" },
+          { value: "text", label: "Text", icon: "chat" },
         ]}
       />
       {error ? (
@@ -111,7 +112,7 @@ export function StartRoomForm({ disabled }: { disabled: boolean }) {
   );
 }
 
-type Option<T extends string> = { value: T; label: string; icon: "globe" | "lock" | "cam" | "wave" };
+type Option<T extends string> = { value: T; label: string; icon: "globe" | "lock" | "cam" | "wave" | "chat" };
 
 function Segmented<T extends string>(props: {
   legend: string;

@@ -10,13 +10,17 @@ export function useProfileDraft() {
   const [name, setName] = useState("");
   const [color, setColor] = useState<AvatarColorId>("tangerine");
   const [error, setError] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
-
-  // Fill in the saved profile once storage is readable (adjusting state during render).
-  if (ready && !loaded) {
-    setLoaded(true);
-    setName(profile?.name ?? "");
-    setColor(profile?.color ?? suggestedColor);
+  // What the draft was last filled from, so later changes elsewhere (Settings) can flow
+  // in without overwriting anything the person is typing here.
+  const [loadedFrom, setLoadedFrom] = useState<{ name: string; color: AvatarColorId } | null>(null);
+  const saved = ready ? { name: profile?.name ?? "", color: profile?.color ?? suggestedColor } : null;
+  if (saved && (!loadedFrom || loadedFrom.name !== saved.name || loadedFrom.color !== saved.color)) {
+    const untouched = !loadedFrom || (name === loadedFrom.name && color === loadedFrom.color);
+    setLoadedFrom(saved);
+    if (untouched) {
+      setName(saved.name);
+      setColor(saved.color);
+    }
   }
 
   function commit(): Profile | null {

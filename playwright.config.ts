@@ -10,7 +10,7 @@ const browser = process.env.PW_CHROME === "1" ? { channel: "chrome" as const } :
 
 export default defineConfig({
   testDir: "tests/e2e",
-  testIgnore: callTests ? [] : ["**/call.spec.ts", "**/screenshots.spec.ts"],
+  testIgnore: callTests ? [] : ["**/call.spec.ts", "**/chat.spec.ts", "**/screenshots.spec.ts"],
   timeout: callTests ? 90_000 : 30_000,
   fullyParallel: !callTests,
   retries: process.env.CI ? 1 : 0,

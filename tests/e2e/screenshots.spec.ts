@@ -53,7 +53,7 @@ test("README screenshots", async ({ browser }) => {
   const lofiForm = lofi.locator("form.start-form");
   await lofiForm.getByLabel("Room name").fill("Late-night lofi");
   await lofiForm.getByLabel("Topic (optional)").fill("Cameras off, good vibes");
-  await lofiForm.getByText("Voice only").click();
+  await lofiForm.getByText("Voice", { exact: true }).click();
   await lofiForm.getByRole("button", { name: "Start room" }).click();
   await lofi.getByRole("button", { name: "Join room" }).click();
   await expect(lofi.locator(".call")).toBeVisible();
@@ -113,4 +113,65 @@ test("README screenshots", async ({ browser }) => {
   await expect(phone.locator(".tile")).toHaveCount(5);
   await phone.waitForTimeout(500);
   await phone.screenshot({ path: `${OUT}/call-phone.png` });
+});
+
+test("README chat screenshots", async ({ browser }) => {
+  test.setTimeout(150_000);
+  const people: { page: Page; name: string }[] = [];
+  for (const [name, color] of [
+    ["Sara Ahmed", "tangerine"],
+    ["Mike Khan", "sky"],
+    ["Jo Lee", "mint"],
+    ["Hina R", "rose"],
+  ] as const) {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
+    await ctx.addInitScript(([n, c]) => localStorage.setItem("zaproom:profile", JSON.stringify({ name: n, color: c })), [name, color]);
+    const page = await ctx.newPage();
+    await page.goto("/chat");
+    await expect(page.locator(".chat-app")).toBeVisible({ timeout: 20_000 });
+    people.push({ page, name });
+  }
+  const [sara, mike, jo, hina] = people.map((p) => p.page) as [Page, Page, Page, Page];
+  const say = async (p: Page, text: string) => {
+    await p.getByLabel("Message", { exact: true }).fill(text);
+    await p.getByLabel("Message", { exact: true }).press("Enter");
+    await p.waitForTimeout(350);
+  };
+  await expect(sara.locator(".people-list li")).toHaveCount(3, { timeout: 20_000 });
+
+  await say(mike, "Morning all! Anyone tried the new React compiler lint rules?");
+  await say(jo, "Yes, set-state-in-effect caught three bugs in my app.");
+  await say(hina, "Same. Took a while to get used to it.");
+  await say(sara, "Moving my state updates into event handlers fixed most of mine.");
+
+  // A private chat for Sara with Jo, opened from the online list.
+  await jo.getByRole("button", { name: "Message Sara Ahmed" }).click();
+  await say(jo, "Want to pair on that later today?");
+  await sara.locator(".convo-item", { hasText: "Jo Lee" }).click();
+  await say(sara, "Sure, 4 pm works. I'll start a room.");
+  await say(jo, "Perfect, see you then");
+  await mike.getByRole("button", { name: "Message Sara Ahmed" }).click();
+  await say(mike, "Can you share the slides from Friday?");
+  await jo.getByLabel("Message", { exact: true }).pressSequentially("one more", { delay: 40 });
+  await sara.waitForTimeout(600);
+  await sara.screenshot({ path: `${OUT}/chat-dark.png` });
+
+  // Phone, light theme: the conversation list.
+  const phoneCtx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+  await phoneCtx.addInitScript(() => {
+    localStorage.setItem("zaproom:profile", JSON.stringify({ name: "Ali", color: "coral" }));
+    localStorage.setItem("zaproom:theme", "light");
+  });
+  const phone = await phoneCtx.newPage();
+  await phone.goto("/chat");
+  await expect(phone.locator(".people-list li")).toHaveCount(4, { timeout: 20_000 });
+  await say(hina, "Welcome Ali!");
+  await expect(phone.locator(".convo-item", { hasText: "Global chat" })).toContainText("Welcome Ali!");
+  await phone.screenshot({ path: `${OUT}/chat-phone.png` });
+
+  // Settings, light theme.
+  await phone.getByRole("button", { name: "Settings" }).click();
+  await phone.getByRole("dialog").getByText("Chime").click();
+  await phone.waitForTimeout(300);
+  await phone.screenshot({ path: `${OUT}/settings-phone.png` });
 });

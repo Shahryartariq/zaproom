@@ -5,7 +5,7 @@ import { Analytics } from "@/components/Analytics";
 import { Logo } from "@/components/Icon";
 import { NavLinks } from "@/components/NavLinks";
 import { ProfileProvider } from "@/components/ProfileProvider";
-import { ThemeSwitch } from "@/components/ThemeSwitch";
+import { SettingsButton } from "@/components/settings/SettingsButton";
 import { gaId, siteUrl, siteVerification } from "@/lib/config";
 import { themeScript } from "@/lib/theme";
 import "./globals.css";
@@ -55,7 +55,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </Link>
             <nav className="site-nav" aria-label="Main">
               <NavLinks />
-              <ThemeSwitch />
+              <SettingsButton />
             </nav>
           </header>
           <main id="main">{children}</main>
