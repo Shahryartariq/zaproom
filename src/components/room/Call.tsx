@@ -186,7 +186,7 @@ function CallInner({
         {!stranger ? (
           <button className="btn ghost" onClick={copyInvite} aria-live="polite">
             <Icon name={copied ? "check" : "link"} />
-            {copied ? "Link copied" : "Copy invite link"}
+            <span className="text">{copied ? "Link copied" : "Copy invite link"}</span>
           </button>
         ) : null}
         {topExtra}

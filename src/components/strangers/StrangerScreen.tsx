@@ -138,7 +138,7 @@ export function StrangerScreen() {
             }}
           >
             <Icon name="next" />
-            Next
+            <span className="text">Next</span>
           </button>
         }
       />

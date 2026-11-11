@@ -131,7 +131,7 @@ export function ControlBar({ voice, panel, onPanel, unread, onReact, onLeave, le
       </button>
       <button className="ctl leave" onClick={onLeave}>
         <Icon name="leave" />
-        {leaveLabel}
+        <span className="text">{leaveLabel}</span>
       </button>
     </div>
   );
