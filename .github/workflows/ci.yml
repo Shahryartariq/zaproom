@@ -70,14 +70,6 @@ jobs:
           timeout 30 bash -c 'until curl -sf http://localhost:7880 >/dev/null; do sleep 1; done'
       - name: README screenshots
         run: LIVEKIT_E2E=1 SCREENSHOTS=1 pnpm exec playwright test tests/e2e/screenshots.spec.ts --retries=0
-      - name: Print screenshots (temporary)
-        run: |
-          for f in test-results/screens/*.png; do
-            echo "SHOT-BEGIN $(basename $f)"
-            base64 -w0 "$f" | fold -w 20000
-            echo
-            echo "SHOT-END $(basename $f)"
-          done
       - uses: actions/upload-artifact@v4
         with:
           name: screenshots
