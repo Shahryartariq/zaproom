@@ -147,7 +147,7 @@ test("README chat screenshots", async ({ browser }) => {
   // A private chat for Sara with Jo, opened from the online list.
   await jo.getByRole("button", { name: "Message Sara Ahmed" }).click();
   await say(jo, "Want to pair on that later today?");
-  await sara.locator(".convo-item", { hasText: "Jo Lee" }).click();
+  await sara.locator(".convo-item").filter({ has: sara.locator("strong", { hasText: /^Jo Lee$/ }) }).click();
   await say(sara, "Sure, 4 pm works. I'll start a room.");
   await say(jo, "Perfect, see you then");
   await mike.getByRole("button", { name: "Message Sara Ahmed" }).click();

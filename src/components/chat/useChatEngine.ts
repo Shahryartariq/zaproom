@@ -94,8 +94,10 @@ export function useChatEngine({ storageKey, groupName, announceJoins }: Options)
       const packet = decodePacket(payload);
       if (!packet) return;
 
+      // Read at arrival time: the identity is fixed for this connection.
+      const self = room.localParticipant.identity;
       if (topic === TYPING_TOPIC && packet.t === "typing") {
-        if (packet.to && packet.to !== me) return;
+        if (packet.to && packet.to !== self) return;
         const key = packet.to ? dmKey(from.identity) : GROUP;
         setTyping((t) => ({ ...t, [key]: { ...t[key], [from.identity]: Date.now() + TYPING_MS } }));
         return;
@@ -103,7 +105,7 @@ export function useChatEngine({ storageKey, groupName, announceJoins }: Options)
       if (topic !== CHAT_TOPIC) return;
 
       if (packet.t === "msg") {
-        if (packet.to && packet.to !== me) return;
+        if (packet.to && packet.to !== self) return;
         const key = packet.to ? dmKey(from.identity) : GROUP;
         const person = toPerson(from);
         const message: ChatMessage = {
@@ -138,7 +140,7 @@ export function useChatEngine({ storageKey, groupName, announceJoins }: Options)
     return () => {
       room.off(RoomEvent.DataReceived, onData);
     };
-  }, [room, me]);
+  }, [room]);
 
   // "Sara joined" / "Sara left" lines.
   useEffect(() => {

@@ -1,7 +1,7 @@
 "use client";
 
-import { LiveKitRoom } from "@livekit/components-react";
-import { DisconnectReason } from "livekit-client";
+import { LiveKitRoom, useConnectionState, useRoomContext } from "@livekit/components-react";
+import { ConnectionState, DisconnectReason } from "livekit-client";
 import { useMemo } from "react";
 import type { Connection } from "../room/types";
 import { ChatShell } from "./ChatShell";
@@ -38,6 +38,36 @@ export function ChatApp({ conn, onDisconnected, ...rest }: Props) {
 }
 
 function ChatInner({
+  groupName,
+  groupHint,
+  storageKey,
+  announceJoins,
+  headerExtra,
+}: Omit<Props, "conn" | "onDisconnected">) {
+  const room = useRoomContext();
+  const connection = useConnectionState();
+  const identity = room.localParticipant.identity;
+  // Your identity is only known once connected; saved chats and private messages need it.
+  if (!identity || connection === ConnectionState.Connecting) {
+    return (
+      <div className="state-screen" aria-busy="true">
+        <p>Connecting to chat…</p>
+      </div>
+    );
+  }
+  return (
+    <Engine
+      key={identity}
+      groupName={groupName}
+      groupHint={groupHint}
+      storageKey={storageKey}
+      announceJoins={announceJoins}
+      headerExtra={headerExtra}
+    />
+  );
+}
+
+function Engine({
   groupName,
   groupHint,
   storageKey,

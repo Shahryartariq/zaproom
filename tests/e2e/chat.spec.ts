@@ -67,13 +67,13 @@ test("global chat, private messages, typing, seen ticks, sounds and saved histor
 
   // Typing shows on Ben's side once he's in the conversation; first the message arrives.
   await say(ann.page, "this is just for you");
-  const benDm = ben.page.locator(".convo-item", { hasText: "Ann" });
+  const benDm = ben.page.locator(".convo-item").filter({ has: ben.page.locator("strong", { hasText: /^Ann$/ }) });
   await expect(benDm).toContainText("this is just for you");
   await expect(benDm.locator(".unread")).toHaveText("1");
   // Ben was looking at the global chat: the private message rang.
   await expect.poll(() => tones(ben.page)).toBeGreaterThan(0);
   // Cat never receives it.
-  await expect(cat.page.locator(".convo-item", { hasText: "Ann" })).toHaveCount(0);
+  await expect(cat.page.locator(".convo-item").filter({ has: cat.page.locator("strong", { hasText: /^Ann$/ }) })).toHaveCount(0);
   await expect(cat.page.locator(".chat-app")).not.toContainText("this is just for you");
   // Ann's message shows one tick until Ben opens it, then two.
   await expect(ann.page.locator(".bubble-row.mine .ticks").last()).toHaveAttribute("aria-label", "Sent");
@@ -95,7 +95,7 @@ test("global chat, private messages, typing, seen ticks, sounds and saved histor
   // his identity is the same, so Ann can keep writing to him.
   await ben.page.reload();
   await expect(ben.page.locator(".chat-app")).toBeVisible({ timeout: 20_000 });
-  const saved = ben.page.locator(".convo-item", { hasText: "Ann" });
+  const saved = ben.page.locator(".convo-item").filter({ has: ben.page.locator("strong", { hasText: /^Ann$/ }) });
   await expect(saved).toBeVisible();
   await saved.click();
   await expect(ben.page.locator(".chat-messages")).toContainText("this is just for you");
@@ -148,7 +148,9 @@ test("text-only room: no media, join notices, group chat and private messages", 
   await expect(host.page.locator(".chat-messages")).toContainText("which book this week?");
   await host.page.getByRole("button", { name: "Message Gus" }).click();
   await say(host.page, "psst, it's Dune");
-  await expect(guest.page.locator(".convo-item", { hasText: "Hana" })).toContainText("psst, it's Dune");
+  await expect(
+    guest.page.locator(".convo-item").filter({ has: guest.page.locator("strong", { hasText: /^Hana$/ }) }),
+  ).toContainText("psst, it's Dune");
 
   // No camera or microphone tracks anywhere.
   for (const p of [host.page, guest.page]) await expect(p.locator("video, audio")).toHaveCount(0);
