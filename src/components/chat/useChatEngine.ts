@@ -276,8 +276,10 @@ export function useChatEngine({ storageKey, groupName, announceJoins }: Options)
     const to = isDm(state.active) ? peerOf(state.active) : undefined;
     if (to && !onlineIds.has(to)) return;
     void room.localParticipant
+      // Reliable: a few bytes every 2.5 s at most, and lossy delivery can be skipped
+      // entirely on some networks.
       .publishData(encodePacket({ t: "typing", to }), {
-        reliable: false,
+        reliable: true,
         topic: TYPING_TOPIC,
         destinationIdentities: to ? [to] : undefined,
       })

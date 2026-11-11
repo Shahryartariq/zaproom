@@ -47,9 +47,8 @@ test("global chat, private messages, typing, seen ticks, sounds and saved histor
   for (const p of [ann, ben, cat]) await openChat(p.page);
 
   // Everyone sees everyone else online.
-  await expect(ann.page.locator(".people-list li")).toHaveCount(2, { timeout: 20_000 });
-  await expect(ann.page.locator(".people-list")).toContainText("Ben");
-  await expect(ann.page.locator(".people-list")).toContainText("Cat");
+  await expect(ann.page.getByRole("button", { name: "Message Ben" })).toBeVisible({ timeout: 20_000 });
+  await expect(ann.page.getByRole("button", { name: "Message Cat" })).toBeVisible();
 
   // Global messages reach everyone, with the sender's name.
   await say(ann.page, "hello everyone");
@@ -155,6 +154,7 @@ test("text-only room: no media, join notices, group chat and private messages", 
   // No camera or microphone tracks anywhere.
   for (const p of [host.page, guest.page]) await expect(p.locator("video, audio")).toHaveCount(0);
 
+  await host.page.locator(".convo-item", { hasText: "Book club" }).click();
   await guest.page.getByRole("button", { name: "Leave" }).click();
   await expect(guest.page.getByRole("heading", { name: "You left Book club" })).toBeVisible();
   await expect(host.page.locator(".system-line").last()).toHaveText("Gus left");
