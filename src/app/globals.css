@@ -930,34 +930,6 @@ body:has(.call) .site-footer {
     grid-column: span 2;
   }
 }
-@media (max-width: 520px) {
-  .controls {
-    gap: 6px;
-    padding: 10px 6px;
-    flex-wrap: nowrap;
-  }
-  .ctl {
-    width: 46px;
-    height: 46px;
-  }
-  .ctl.leave {
-    width: 46px;
-    padding: 0;
-    justify-content: center;
-  }
-  .ctl.leave .text,
-  .call-top .btn .text {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-  }
-  .call-top .btn {
-    padding: 0 12px;
-  }
-}
 .stage.has-screen {
   grid-template-rows: minmax(0, 1fr) 140px;
 }
@@ -1447,6 +1419,35 @@ body:has(.call) .site-footer {
   color: var(--ink-2);
 }
 
+/* Phones: everything in the call bar fits on one row. */
+@media (max-width: 520px) {
+  .controls {
+    gap: 6px;
+    padding: 10px 6px;
+    flex-wrap: nowrap;
+  }
+  .ctl {
+    width: 46px;
+    height: 46px;
+  }
+  .ctl.leave {
+    width: 46px;
+    padding: 0;
+    justify-content: center;
+  }
+  .ctl.leave .text,
+  .call-top .btn .text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .call-top .btn {
+    padding: 0 12px;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
