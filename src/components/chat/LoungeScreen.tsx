@@ -44,6 +44,9 @@ export function LoungeScreen() {
 
   const join = useCallback(
     async (p: { name: string; color: string }) => {
+      // Joining by hand also counts as the one automatic join for this visit: saving a
+      // first-time name would otherwise trigger the returning-visitor auto-join too.
+      auto.current = true;
       setPhase({ step: "joining" });
       try {
         const res = await fetch("/api/chat/token", {

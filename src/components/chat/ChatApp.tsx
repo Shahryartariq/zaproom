@@ -30,7 +30,10 @@ export function ChatApp({ conn, onDisconnected, ...rest }: Props) {
       video={false}
       options={options}
       onDisconnected={onDisconnected}
-      onError={(e) => console.error("[chat]", e)}
+      onError={(e) => {
+        // Leaving or switching tabs cancels a pending connect; that isn't an error.
+        if (!/client initiated/i.test(e.message)) console.error("[chat]", e);
+      }}
     >
       <ChatInner {...rest} />
     </LiveKitRoom>
