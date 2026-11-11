@@ -64,8 +64,8 @@ test("README screenshots", async ({ browser }) => {
     [host, "Same here. Happy to share my screen and walk through it."],
   ] as const) {
     await page.getByRole("button", { name: /^Chat/ }).click();
-    await page.getByLabel("Message").fill(text);
-    await page.getByLabel("Message").press("Enter");
+    await page.getByLabel("Message", { exact: true }).fill(text);
+    await page.getByLabel("Message", { exact: true }).press("Enter");
     await page.waitForTimeout(400);
   }
   await expect(host.locator(".messages .msg, .messages .cont")).toHaveCount(3);
@@ -77,8 +77,8 @@ test("README screenshots", async ({ browser }) => {
   // Light theme view of the same call.
   const viewer = await join(browser, path, "Raza", "lilac", "light");
   await viewer.getByRole("button", { name: /^Chat/ }).click();
-  await jo.getByLabel("Message").fill("Welcome Raza!");
-  await jo.getByLabel("Message").press("Enter");
+  await jo.getByLabel("Message", { exact: true }).fill("Welcome Raza!");
+  await jo.getByLabel("Message", { exact: true }).press("Enter");
   await expect(viewer.locator(".messages")).toContainText("Welcome Raza!");
   await viewer.screenshot({ path: `${OUT}/call-light.png` });
 

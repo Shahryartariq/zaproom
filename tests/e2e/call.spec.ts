@@ -61,13 +61,13 @@ test("two people share a room: video, audio, chat, reactions and leaving", async
 
   // Chat both ways, with an unread badge for the closed panel.
   await alice.getByRole("button", { name: "Chat" }).click();
-  await alice.getByLabel("Message").fill("hello bob");
-  await alice.getByLabel("Message").press("Enter");
+  await alice.getByLabel("Message", { exact: true }).fill("hello bob");
+  await alice.getByLabel("Message", { exact: true }).press("Enter");
   await expect(bob.getByRole("button", { name: "Chat, 1 unread" })).toBeVisible();
   await bob.getByRole("button", { name: /^Chat/ }).click();
   await expect(bob.locator(".messages")).toContainText("hello bob");
-  await bob.getByLabel("Message").fill("hi alice");
-  await bob.getByLabel("Message").press("Enter");
+  await bob.getByLabel("Message", { exact: true }).fill("hi alice");
+  await bob.getByLabel("Message", { exact: true }).press("Enter");
   await expect(alice.locator(".messages")).toContainText("hi alice");
 
   // Muting shows on the other side.
@@ -123,8 +123,8 @@ test("two strangers get matched, talk, and one skips", async ({ browser }) => {
   await expect(sam.locator(".tile video")).toHaveCount(0);
 
   await sam.getByRole("button", { name: "Chat" }).click();
-  await sam.getByLabel("Message").fill("hey stranger");
-  await sam.getByLabel("Message").press("Enter");
+  await sam.getByLabel("Message", { exact: true }).fill("hey stranger");
+  await sam.getByLabel("Message", { exact: true }).press("Enter");
   await kim.getByRole("button", { name: /^Chat/ }).click();
   await expect(kim.locator(".messages")).toContainText("hey stranger");
 

@@ -26,10 +26,13 @@ export async function createRoom(cfg: LiveKitConfig, id: string, meta: RoomMeta)
 }
 
 export async function getRoom(cfg: LiveKitConfig, id: string): Promise<{ meta: RoomMeta; count: number } | null> {
-  const [room] = await service(cfg).listRooms([id]);
+  const svc = service(cfg);
+  const [room] = await svc.listRooms([id]);
   const meta = parseMeta(room?.metadata);
   if (!room || !meta) return null;
-  return { meta, count: room.numParticipants };
+  // The room's own counter can trail joins by a few seconds; the participant list doesn't.
+  const people = await svc.listParticipants(id).catch(() => null);
+  return { meta, count: people ? people.filter(isPresent).length : room.numParticipants };
 }
 
 export async function lobbySnapshot(cfg: LiveKitConfig): Promise<LobbySnapshot> {
