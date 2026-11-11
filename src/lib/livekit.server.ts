@@ -2,10 +2,19 @@ import "server-only";
 import { AccessToken, RoomServiceClient, TrackSource, type ParticipantInfo } from "livekit-server-sdk";
 import type { LiveKitConfig } from "./config";
 import { colorSchema, type Profile } from "./profile";
-import { QUEUE_ROOM, encodeMeta, parseMeta, sortLobby, type LobbyRoom, type LobbySnapshot, type RoomMeta } from "./rooms";
+import {
+  LOUNGE_ROOM,
+  QUEUE_ROOM,
+  encodeMeta,
+  parseMeta,
+  roomLimit,
+  sortLobby,
+  type LobbyRoom,
+  type LobbySnapshot,
+  type RoomMeta,
+} from "./rooms";
 import type { QueueEntry } from "./pairing";
 
-const ROOM_LIMIT = 12;
 const LOBBY_LIMIT = 24;
 
 /** LiveKit's REST API lives on the same host as the WebSocket URL. */
@@ -18,7 +27,7 @@ export async function createRoom(cfg: LiveKitConfig, id: string, meta: RoomMeta)
   await service(cfg).createRoom({
     name: id,
     metadata: encodeMeta(meta),
-    maxParticipants: stranger ? 2 : ROOM_LIMIT,
+    maxParticipants: stranger ? 2 : roomLimit(meta.kind),
     // Close a room nobody joined after 5 minutes (stranger rooms: 1), and an emptied one after 1.
     emptyTimeout: stranger ? 60 : 300,
     departureTimeout: stranger ? 10 : 60,
@@ -40,11 +49,16 @@ export async function lobbySnapshot(cfg: LiveKitConfig): Promise<LobbySnapshot> 
   const all = await svc.listRooms();
   let online = 0;
   let waiting = 0;
+  let chatting = 0;
   const publicRooms: { id: string; meta: RoomMeta; count: number }[] = [];
 
   for (const room of all) {
     if (room.name === QUEUE_ROOM) {
       waiting = room.numParticipants;
+      continue;
+    }
+    if (room.name === LOUNGE_ROOM) {
+      chatting = room.numParticipants;
       continue;
     }
     const meta = parseMeta(room.metadata);
@@ -74,7 +88,7 @@ export async function lobbySnapshot(cfg: LiveKitConfig): Promise<LobbySnapshot> 
     }),
   );
 
-  return { configured: true, rooms: withPeople, online, waiting };
+  return { configured: true, rooms: withPeople, online, waiting, chatting };
 }
 
 function isPresent(p: ParticipantInfo): boolean {
@@ -96,6 +110,9 @@ type TokenOptions = {
   listenOnly?: boolean;
 };
 
+const CALL_SOURCES = [TrackSource.CAMERA, TrackSource.MICROPHONE, TrackSource.SCREEN_SHARE, TrackSource.SCREEN_SHARE_AUDIO];
+const VOICE_SOURCES = [TrackSource.MICROPHONE, TrackSource.SCREEN_SHARE, TrackSource.SCREEN_SHARE_AUDIO];
+
 export async function mintToken(cfg: LiveKitConfig, opts: TokenOptions): Promise<string> {
   const token = new AccessToken(cfg.apiKey, cfg.apiSecret, {
     identity: opts.identity,
@@ -108,14 +125,11 @@ export async function mintToken(cfg: LiveKitConfig, opts: TokenOptions): Promise
     roomJoin: true,
     roomCreate: false,
     canSubscribe: !opts.listenOnly,
-    canPublish: !opts.listenOnly,
+    // Text rooms and the global chat only send data packets, never audio or video.
+    canPublish: !opts.listenOnly && opts.kind !== "text",
     canPublishData: !opts.listenOnly,
     canUpdateOwnMetadata: false,
-    canPublishSources: opts.listenOnly
-      ? []
-      : opts.kind === "voice"
-        ? [TrackSource.MICROPHONE, TrackSource.SCREEN_SHARE, TrackSource.SCREEN_SHARE_AUDIO]
-        : [TrackSource.CAMERA, TrackSource.MICROPHONE, TrackSource.SCREEN_SHARE, TrackSource.SCREEN_SHARE_AUDIO],
+    canPublishSources: opts.listenOnly || opts.kind === "text" ? [] : opts.kind === "voice" ? VOICE_SOURCES : CALL_SOURCES,
   });
   return token.toJwt();
 }
@@ -137,4 +151,8 @@ export async function ensureQueueRoom(cfg: LiveKitConfig): Promise<void> {
 
 export async function markMatched(cfg: LiveKitConfig, identity: string, roomId: string): Promise<void> {
   await service(cfg).updateParticipant(QUEUE_ROOM, identity, { attributes: { match: roomId } });
+}
+
+export async function ensureLoungeRoom(cfg: LiveKitConfig): Promise<void> {
+  await service(cfg).createRoom({ name: LOUNGE_ROOM, emptyTimeout: 600, departureTimeout: 30, maxParticipants: 1000 });
 }

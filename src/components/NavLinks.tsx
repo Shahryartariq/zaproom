@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const LINKS = [
+const LINKS: { href: string; label: string; short?: string }[] = [
   { href: "/", label: "Rooms" },
-  { href: "/strangers", label: "Meet a stranger" },
+  { href: "/chat", label: "Chat" },
+  { href: "/strangers", label: "Meet a stranger", short: "Strangers" },
 ];
 
 export function NavLinks() {
@@ -14,7 +15,16 @@ export function NavLinks() {
     <>
       {LINKS.map((l) => (
         <Link key={l.href} href={l.href} aria-current={path === l.href ? "page" : undefined}>
-          {l.label}
+          {l.short ? (
+            <>
+              <span className="long">{l.label}</span>
+              <span className="short" aria-hidden="true">
+                {l.short}
+              </span>
+            </>
+          ) : (
+            l.label
+          )}
         </Link>
       ))}
     </>

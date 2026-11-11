@@ -2,7 +2,7 @@ export type RoomInfo = {
   id: string;
   title: string;
   topic: string;
-  kind: "video" | "voice";
+  kind: "video" | "voice" | "text";
   visibility: "public" | "private" | "stranger";
   count: number;
 };

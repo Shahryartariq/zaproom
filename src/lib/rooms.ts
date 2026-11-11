@@ -2,6 +2,15 @@ import { z } from "zod";
 import type { AvatarColorId } from "./profile";
 
 export const QUEUE_ROOM = "zaproom-strangers-queue";
+/** The always-open global text chat. */
+export const LOUNGE_ROOM = "zaproom-lounge";
+
+export type RoomKind = "video" | "voice" | "text";
+
+/** People per room: calls stay small enough for a grid; text rooms can be bigger. */
+export function roomLimit(kind: RoomKind): number {
+  return kind === "text" ? 50 : 12;
+}
 
 /** Letters and digits that can't be mistaken for each other (no 0/o, 1/l/i). */
 const ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
@@ -32,7 +41,7 @@ export const roomMetaSchema = z.object({
   title: z.string(),
   topic: z.string().default(""),
   visibility: z.enum(["public", "private", "stranger"]),
-  kind: z.enum(["video", "voice"]),
+  kind: z.enum(["video", "voice", "text"]),
   createdAt: z.number(),
 });
 export type RoomMeta = z.infer<typeof roomMetaSchema>;
@@ -58,7 +67,7 @@ export type LobbyRoom = {
   id: string;
   title: string;
   topic: string;
-  kind: "video" | "voice";
+  kind: RoomKind;
   count: number;
   people: PublicPerson[];
   createdAt: number;
@@ -71,6 +80,8 @@ export type LobbySnapshot = {
   online: number;
   /** People waiting to be matched with a stranger. */
   waiting: number;
+  /** People in the global chat. */
+  chatting: number;
 };
 
 /** Busy rooms first, then newest. */

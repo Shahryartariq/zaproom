@@ -7,6 +7,7 @@ export const snapshot: LobbySnapshot = {
   configured: true,
   online: 9,
   waiting: 2,
+  chatting: 4,
   rooms: [
     {
       id: ROOM_ID,

@@ -92,7 +92,7 @@ test("a voice room has no camera", async ({ browser }) => {
   const form = page.locator("form.start-form");
   await form.getByLabel("Your name").fill("Vic");
   await form.getByLabel("Room name").fill("Voice check");
-  await form.getByText("Voice only").click();
+  await form.getByText("Voice", { exact: true }).click();
   await form.getByRole("button", { name: "Start room" }).click();
   await expect(page.getByText("Voice room")).toBeVisible();
   await expect(page.getByRole("button", { name: /camera/ })).toHaveCount(0);

@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   const blocked = limited(readLimit, req, "lobby");
   if (blocked) return blocked;
   const cfg = liveKitConfig();
-  if (!cfg) return json({ configured: false, rooms: [], online: 0, waiting: 0 } satisfies LobbySnapshot);
+  if (!cfg) return json({ configured: false, rooms: [], online: 0, waiting: 0, chatting: 0 } satisfies LobbySnapshot);
 
   if (!cached || Date.now() - cached.at > FRESH_MS) {
     inflight ??= lobbySnapshot(cfg)

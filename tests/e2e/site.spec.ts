@@ -40,7 +40,7 @@ test.describe("lobby", () => {
 
     await form.getByLabel("Room name").fill("Friday standup");
     await form.getByText("Link only").click();
-    await form.getByText("Voice only").click();
+    await form.getByText("Voice", { exact: true }).click();
     const request = page.waitForRequest((r) => r.url().endsWith("/api/rooms") && r.method() === "POST");
     await form.getByRole("button", { name: "Start room" }).click();
     expect((await request).postDataJSON()).toEqual({ title: "Friday standup", topic: "", visibility: "private", kind: "voice" });
@@ -111,6 +111,7 @@ test.describe("theme", () => {
   test("defaults to dark and remembers a choice without a flash", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await page.getByRole("button", { name: "Settings" }).click();
     await page.locator(".theme-switch label[title='Light']").click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     // The head script must apply the saved theme before any app code runs.
@@ -122,6 +123,7 @@ test.describe("theme", () => {
   test("can follow the device", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "light" });
     await page.goto("/");
+    await page.getByRole("button", { name: "Settings" }).click();
     await page.locator(".theme-switch label[title='Match device']").click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     await page.emulateMedia({ colorScheme: "dark" });
@@ -131,7 +133,7 @@ test.describe("theme", () => {
 
 test.describe("accessibility", () => {
   for (const theme of ["dark", "light"] as const) {
-    for (const path of ["/", "/strangers", "/privacy", `/r/${ROOM_ID}`]) {
+    for (const path of ["/", "/strangers", "/chat", "/privacy", `/r/${ROOM_ID}`]) {
       test(`${path} has no axe violations in ${theme}`, async ({ page }) => {
         await page.addInitScript((t) => localStorage.setItem("zaproom:theme", t), theme);
         await mockApi(page);
@@ -145,7 +147,7 @@ test.describe("accessibility", () => {
 
   test("pages don't scroll sideways", async ({ page }) => {
     await mockApi(page);
-    for (const path of ["/", "/strangers", "/privacy", `/r/${ROOM_ID}`]) {
+    for (const path of ["/", "/strangers", "/chat", "/privacy", `/r/${ROOM_ID}`]) {
       await page.goto(path);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(overflow, path).toBeLessThanOrEqual(0);
@@ -200,16 +202,126 @@ test.describe("API guards", () => {
   });
 
   test("reports when LiveKit isn't configured", async ({ request }) => {
-    for (const path of ["/api/token", "/api/rooms", "/api/strangers/queue", "/api/strangers/match"]) {
+    for (const path of ["/api/token", "/api/rooms", "/api/strangers/queue", "/api/strangers/match", "/api/chat/token"]) {
       const res = await request.post(path, { data: {} });
       expect(res.status(), path).toBe(503);
     }
     const lobby = await (await request.get("/api/rooms")).json();
-    expect(lobby).toEqual({ configured: false, rooms: [], online: 0, waiting: 0 });
+    expect(lobby).toEqual({ configured: false, rooms: [], online: 0, waiting: 0, chatting: 0 });
   });
 
   test("rejects malformed room ids before calling LiveKit", async ({ request }) => {
     expect((await request.get("/api/rooms/..%2F..%2Fadmin")).status()).toBe(404);
     expect((await request.get("/api/rooms/s-0123456789abcdef")).status()).toBe(404);
+  });
+});
+
+test.describe("settings", () => {
+  test("picks a sound, sets volume and switches, and remembers them", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Settings" }).click();
+    const dialog = page.getByRole("dialog", { name: "Settings" });
+    await expect(dialog).toBeVisible();
+    await dialog.getByText("Marimba").click();
+    await dialog.getByLabel(/^Volume/).fill("30");
+    await dialog.getByRole("switch", { name: "Global chat and text rooms" }).uncheck();
+    await dialog.getByRole("switch", { name: /Press Enter to send/ }).uncheck();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("zaproom:settings") ?? "{}"));
+    expect(saved).toMatchObject({ sound: "marimba", volume: 0.3, ringGroup: false, enterToSend: false });
+
+    await page.reload();
+    await page.getByRole("button", { name: "Settings" }).click();
+    await expect(dialog.getByRole("radio", { name: "Marimba" })).toBeChecked();
+    await expect(dialog.getByRole("switch", { name: "Global chat and text rooms" })).not.toBeChecked();
+    await expect(dialog.getByRole("switch", { name: "Private messages" })).toBeChecked();
+  });
+
+  test("plays the chosen sound through Web Audio", async ({ page }) => {
+    await page.addInitScript(() => {
+      (window as unknown as { __tones: number }).__tones = 0;
+      const start = OscillatorNode.prototype.start;
+      OscillatorNode.prototype.start = function (...args: Parameters<typeof start>) {
+        (window as unknown as { __tones: number }).__tones++;
+        return start.apply(this, args);
+      };
+    });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Settings" }).click();
+    await page.getByRole("dialog").getByText("Chime").click();
+    await expect.poll(() => page.evaluate(() => (window as unknown as { __tones: number }).__tones)).toBe(2);
+    await page.getByRole("dialog").getByText("No sound").click();
+    await page.getByRole("dialog").getByRole("button", { name: "Test" }).isDisabled();
+  });
+
+  test("saves a new name", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Settings" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Your name").fill("Sherry");
+    await dialog.getByRole("button", { name: "Save name" }).click();
+    await expect(dialog.getByText(/^Saved\./)).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("form.start-form").getByLabel("Your name")).toHaveValue("Sherry");
+  });
+});
+
+test.describe("chat page", () => {
+  test("asks for a name, then explains when chat is off", async ({ page }) => {
+    await page.goto("/chat");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Chat");
+    await page.getByRole("button", { name: "Open chat" }).click();
+    await expect(page.locator("form").getByRole("alert")).toHaveText("Enter a name so people know who you are.");
+    await page.getByLabel("Your name").fill("Sherry");
+    await page.getByRole("button", { name: "Open chat" }).click();
+    await expect(page.locator("form").getByRole("alert")).toContainText("Calls aren't switched on");
+  });
+
+  test("sends a stable device key with the request", async ({ page }) => {
+    const bodies: { device?: string }[] = [];
+    await page.route("**/api/chat/token", async (route) => {
+      bodies.push(route.request().postDataJSON());
+      await route.fulfill({ status: 503, json: { error: "off" } });
+    });
+    await page.addInitScript(() => localStorage.setItem("zaproom:profile", JSON.stringify({ name: "Sherry", color: "mint" })));
+    await page.goto("/chat");
+    await expect.poll(() => bodies.length).toBe(1);
+    await page.reload();
+    await expect.poll(() => bodies.length).toBe(2);
+    expect(bodies[0]?.device).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(bodies[1]?.device).toBe(bodies[0]?.device);
+  });
+
+  test("a text room is offered in the lobby form", async ({ page }) => {
+    await mockApi(page);
+    await page.goto("/");
+    const form = page.locator("form.start-form");
+    await form.getByLabel("Your name").fill("Sherry");
+    await form.getByLabel("Room name").fill("Book club");
+    await form.getByText("Text", { exact: true }).click();
+    const request = page.waitForRequest((r) => r.url().endsWith("/api/rooms") && r.method() === "POST");
+    await form.getByRole("button", { name: "Start room" }).click();
+    expect((await request).postDataJSON()).toMatchObject({ kind: "text" });
+  });
+
+  test("joining a text room never asks for the camera or microphone", async ({ page }) => {
+    await page.addInitScript(() => {
+      (window as unknown as { __media: number }).__media = 0;
+      const gum = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+      navigator.mediaDevices.getUserMedia = (c) => {
+        (window as unknown as { __media: number }).__media++;
+        return gum(c);
+      };
+    });
+    await page.route(`**/api/rooms/${ROOM_ID}`, (route) =>
+      route.fulfill({ json: { id: ROOM_ID, title: "Book club", topic: "", kind: "text", visibility: "public", count: 2 } }),
+    );
+    await page.goto(`/r/${ROOM_ID}`);
+    await expect(page.getByText("Text room")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Join chat" })).toBeVisible();
+    await expect(page.locator("video")).toHaveCount(0);
+    expect(await page.evaluate(() => (window as unknown as { __media: number }).__media)).toBe(0);
   });
 });

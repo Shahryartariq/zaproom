@@ -4,7 +4,7 @@ import { NOT_CONFIGURED, error, json, limited, readBody, sameOrigin } from "@/li
 import { getRoom, mintToken } from "@/lib/livekit.server";
 import { profileSchema } from "@/lib/profile";
 import { RateLimiter } from "@/lib/rate-limit";
-import { ROOM_ID } from "@/lib/rooms";
+import { ROOM_ID, roomLimit } from "@/lib/rooms";
 
 const limit = new RateLimiter(20, 60_000);
 
@@ -25,7 +25,8 @@ export async function POST(req: Request) {
   try {
     const room = await getRoom(cfg, roomId);
     if (!room || room.meta.visibility === "stranger") return error(404, "This room doesn't exist or has closed.");
-    if (room.count >= 12) return error(409, "This room is full (12 people). Try again later or start your own.");
+    const limit = roomLimit(room.meta.kind);
+    if (room.count >= limit) return error(409, `This room is full (${limit} people). Try again later or start your own.`);
     const token = await mintToken(cfg, {
       roomId,
       identity: `g_${crypto.randomUUID()}`,

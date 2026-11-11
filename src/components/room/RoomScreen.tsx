@@ -1,9 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useRoomContext } from "@livekit/components-react";
 import { useEffect, useState } from "react";
+import { DisconnectReason } from "livekit-client";
+import { ChatApp } from "../chat/ChatApp";
+import { Icon } from "../Icon";
 import { Call } from "./Call";
+import { CopyInvite } from "./CopyInvite";
 import { PreJoin } from "./PreJoin";
+import { TextJoin } from "./TextJoin";
 import type { Connection, MediaChoices, RoomInfo } from "./types";
 
 type State =
@@ -87,11 +93,46 @@ export function RoomScreen({ id }: { id: string }) {
     );
   }
 
+  if (state.step === "prejoin" && state.info.kind === "text") {
+    const info = state.info;
+    return <TextJoin info={info} onJoin={(conn) => setState({ step: "call", info, conn, media: { audio: false, video: false } })} />;
+  }
+
   if (state.step === "prejoin") {
     return (
       <PreJoin
         info={state.info}
         onJoin={(conn, media) => setState({ step: "call", info: state.info, conn, media })}
+      />
+    );
+  }
+
+  if (state.info.kind === "text") {
+    const info = state.info;
+    return (
+      <ChatApp
+        conn={state.conn}
+        groupName={info.title}
+        groupHint={info.topic || "Start the conversation"}
+        announceJoins
+        onDisconnected={(reason) =>
+          setState({
+            step: "left",
+            info,
+            reason:
+              reason === DisconnectReason.CLIENT_INITIATED
+                ? "You can rejoin while the room is open."
+                : reason === DisconnectReason.ROOM_DELETED || reason === DisconnectReason.ROOM_CLOSED
+                  ? "The room closed."
+                  : "The connection dropped. Check your internet and rejoin.",
+          })
+        }
+        headerExtra={
+          <>
+            <CopyInvite roomId={info.id} />
+            <LeaveButton />
+          </>
+        }
       />
     );
   }
@@ -103,5 +144,15 @@ export function RoomScreen({ id }: { id: string }) {
       media={state.media}
       onLeave={(reason) => setState({ step: "left", info: state.info, reason })}
     />
+  );
+}
+
+function LeaveButton() {
+  const room = useRoomContext();
+  return (
+    <button className="btn danger" onClick={() => void room.disconnect()}>
+      <Icon name="leave" />
+      <span className="text">Leave</span>
+    </button>
   );
 }

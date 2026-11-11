@@ -39,7 +39,8 @@ export function LiveRooms({ snapshot, failed }: { snapshot: LobbySnapshot | null
               {room.topic ? <p className="topic">{room.topic}</p> : null}
               <div className="meta">
                 <span>
-                  <Icon name={room.kind === "voice" ? "wave" : "cam"} /> {room.kind === "voice" ? "Voice" : "Video"}
+                  <Icon name={room.kind === "voice" ? "wave" : room.kind === "text" ? "chat" : "cam"} />{" "}
+                  {room.kind === "voice" ? "Voice" : room.kind === "text" ? "Text" : "Video"}
                 </span>
                 {room.people.length > 0 ? (
                   <span className="stack" role="img" aria-label={room.people.map((p) => p.name).join(", ")}>

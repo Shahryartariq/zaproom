@@ -1,14 +1,19 @@
 # Zaproom
 
-Video, voice and text rooms in the browser. Pick a name, start a room, step into one that's already talking, or get matched with a stranger for a one-to-one chat. No sign-up, nothing to install.
+Video, voice and text chat in the browser. Pick a name, start a room, step into one that's already talking, chat with everyone online, message someone privately, or get matched with a stranger. No sign-up, nothing to install.
 
 **Live demo:** https://zaproom.vercel.app
 
 ![A Zaproom call with three people and the chat open](docs/screenshots/call-dark.png)
 
+![Global chat with private messages, unread counts, online people and seen ticks](docs/screenshots/chat-dark.png)
+
 ## What it does
 
 - **Rooms for up to 12 people** with video, voice, screen sharing (with tab audio), text chat and emoji reactions.
+- **Global chat, like a group chat on your phone.** Everyone online in one group, a live list of who's here, and private one-to-one messages: tap a name to start. Typing indicators, unread counts, and ticks that turn blue when your message has been seen. Your private chats are saved on your device, so they're still there after a reload.
+- **Text-only rooms** for up to 50 people, with "joined" and "left" notices and private messages inside the room. No camera or microphone permission is ever asked for.
+- **Settings:** six notification sounds made in the browser (Ting, Pop, Chime, Bubble, Marimba, Knock) with preview and volume, separate switches for global chat, private messages and in-call chat, pop-up notifications when the tab is in the background, Enter-to-send, theme, and your name.
 - **A live lobby.** Public rooms show who's inside and update every few seconds, along with how many people are online and how many are waiting to meet someone.
 - **Private rooms** that only open from their link (`/r/k7f-2qxm-9zd`) and never appear in the lobby.
 - **Voice-only rooms.** The server refuses camera tracks in them, so nobody can switch a camera on.
@@ -20,6 +25,10 @@ Video, voice and text rooms in the browser. Pick a name, start a room, step into
 | Live lobby | Light theme | On a phone |
 | --- | --- | --- |
 | ![Lobby listing two live rooms and who is inside](docs/screenshots/lobby-dark.png) | ![A four-person call in light theme with chat open](docs/screenshots/call-light.png) | ![A five-person call on a phone](docs/screenshots/call-phone.png) |
+
+| Chat on a phone | Notification settings |
+| --- | --- |
+| ![Chat list on a phone with the global chat and people online](docs/screenshots/chat-phone.png) | ![Settings with six notification sounds, volume and switches](docs/screenshots/settings-phone.png) |
 
 ## How it works
 
@@ -33,7 +42,9 @@ flowchart LR
 - **No database.** LiveKit is the source of truth. A room's name, topic, type and visibility live in its LiveKit metadata. The lobby is built from `listRooms` and `listParticipants`, and one lookup is shared by every visitor for 4 seconds.
 - **Tokens are the only way in.** `/api/token` checks that the room exists and isn't full, then signs a 2-hour token for that one room. Voice rooms get a token that can't publish a camera. Nobody can create a room by guessing a name.
 - **Stranger matching without shared memory.** Waiting means being connected to a hidden LiveKit room whose tokens can't publish anything, so closing the tab takes you out of line. Each poll lists that room and pairs people in join order (1st with 2nd, 3rd with 4th). Every request computes the same pairs, and both people get the same room id (a hash of the two identities), so two simultaneous polls on different serverless instances agree. Each poll carries an HMAC-signed ticket, so nobody can take someone else's match.
-- **Chat and reactions** use LiveKit's data channels. Reactions are limited to six known emoji, and nothing is stored.
+- **Chat and reactions** use LiveKit's data channels. Reactions are limited to six known emoji, and nothing is stored on a server.
+- **Private messages without a message server.** Text chat is a LiveKit room whose tokens can only send data packets. The SFU stamps every packet with the sender's identity from their signed token, so names can't be faked, and private messages use `destinationIdentities`, so the server only delivers them to one person. Packets are validated with zod on arrival, and senders are limited to 6 messages every 6 seconds.
+- **Identity that survives a reload.** Each browser keeps a random device key. The server turns it into a chat identity with an HMAC, so the identity stays the same across reloads but can't be claimed by anyone who only sees it. Opening chat in a second tab moves the session there and offers "Use it here" in the first.
 
 ### Security and privacy
 
@@ -80,12 +91,12 @@ Without the LiveKit variables the site still runs and says that calls are switch
 
 ```bash
 pnpm lint && pnpm typecheck
-pnpm test            # unit: validation, room ids, matching, tickets, rate limits
+pnpm test            # unit: validation, room ids, matching, tickets, rate limits, chat packets and state, settings
 PW_CHROME=1 pnpm e2e # browser: lobby, forms, pre-join, themes, axe in both themes, headers, API guards (desktop + phone)
 pnpm e2e:call        # real calls: needs a LiveKit server and the env vars above
 ```
 
-CI runs everything on each pull request. The **calls** job starts `livekit-server --dev` in Docker, then two and three browser contexts with fake cameras and mics meet in a room. They check that video plays and audio is attached, chat goes both ways, mute and reactions show up, the lobby count updates and leaving works. A stranger match, a skip and a re-match are tested the same way. The screenshots above come from that job.
+CI runs everything on each pull request. The **calls** job starts `livekit-server --dev` in Docker, then two and three browser contexts with fake cameras and mics meet in a room. They check that video plays and audio is attached, chat goes both ways, mute and reactions show up, the lobby count updates and leaving works. A stranger match, a skip and a re-match are tested the same way. Text chat gets the same treatment: three people in the global chat, a private message that the third person never receives, typing, seen ticks, the notification sound, saved history after a reload, the one-tab rule, and a text room with join and leave notices. The screenshots above come from that job.
 
 ## Deploy
 
