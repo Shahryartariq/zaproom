@@ -17,10 +17,12 @@ describe("emoji set", () => {
 
 describe("searchEmoji", () => {
   it("matches keyword prefixes, all words required", () => {
-    expect(searchEmoji("fire").map((e) => e.char)).toContain("🔥");
+    expect(searchEmoji("fire").map((e) => e.char)).toEqual(["🔥", "❤️‍🔥"]);
+    expect(searchEmoji("heart")[0]?.char).toBe("😍");
+    expect(searchEmoji("red heart")[0]?.char).toBe("❤️");
     expect(searchEmoji("thu").map((e) => e.char)).toEqual(["👍", "👎"]);
     expect(searchEmoji("thumbs up").map((e) => e.char)).toEqual(["👍"]);
-    expect(searchEmoji("LAUGH")[0]?.char).toBe("😄");
+    expect(searchEmoji("LAUGH")[0]?.char).toBe("😆");
     expect(searchEmoji("   ")).toEqual([]);
     expect(searchEmoji("zzzqqq")).toEqual([]);
   });

@@ -3,7 +3,10 @@ import { siteUrl } from "@/lib/config";
 
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: [{ userAgent: "*", allow: "/", disallow: ["/api/", "/r/"] }],
+    // Room pages stay crawlable so search engines can read their noindex tag;
+    // blocking them here would let a shared room link get listed without it.
+    rules: [{ userAgent: "*", allow: "/", disallow: ["/api/"] }],
     sitemap: `${siteUrl()}/sitemap.xml`,
+    host: siteUrl(),
   };
 }

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
+  path: "/privacy",
   title: "Privacy",
-  description: "What Zaproom keeps (almost nothing) and how calls travel.",
-  alternates: { canonical: "/privacy" },
-};
+  description: "What Zaproom keeps (almost nothing), how calls and messages travel, and what stays on your device.",
+});
 
 export default function Privacy() {
   return (
