@@ -148,6 +148,24 @@ test("text-only room: no media, join notices, group chat and private messages", 
   await expect(host.page.locator(".system-line")).toHaveText("Gus joined");
   await say(guest.page, "which book this week?");
   await expect(host.page.locator(".chat-messages")).toContainText("which book this week?");
+
+  // Emoji: search, insert at the caret, close with Escape; an emoji-only message shows large.
+  await composer(guest.page).fill("great book ");
+  await guest.page.getByRole("button", { name: "Add emoji" }).click();
+  const panel = guest.page.getByRole("dialog", { name: "Emoji" });
+  await panel.getByLabel("Search emoji").fill("fire");
+  await panel.getByRole("button", { name: "fire", exact: true }).click();
+  await expect(composer(guest.page)).toHaveValue("great book 🔥");
+  await guest.page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  await composer(guest.page).press("Enter");
+  await expect(host.page.locator(".chat-messages")).toContainText("great book 🔥");
+  await guest.page.getByRole("button", { name: "Add emoji" }).click();
+  await expect(panel.locator("[data-group=Recent] button")).toHaveText(["🔥"]);
+  await panel.locator("[data-group=Smileys]").getByRole("button", { name: "joy", exact: true }).click();
+  await guest.page.getByRole("button", { name: "Close emoji" }).click();
+  await composer(guest.page).press("Enter");
+  await expect(host.page.locator(".chat-messages .big-emoji").last()).toHaveText("😂");
   await host.page.getByRole("button", { name: "Message Gus" }).click();
   await say(host.page, "psst, it's Dune");
   await expect(

@@ -4,10 +4,12 @@ import { useConnectionState } from "@livekit/components-react";
 import { ConnectionState } from "livekit-client";
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
 import { MAX_TEXT } from "@/lib/chat/protocol";
+import { isEmojiOnly } from "@/lib/emoji";
 import { GROUP, dmKey, dmList, isDm, peerOf, type ChatMessage, type Conversation, type Person } from "@/lib/chat/state";
 import { Avatar } from "../Avatar";
 import { Icon } from "../Icon";
 import { useSettings } from "../settings/useSettings";
+import { EmojiPicker, useEmojiInsert } from "./EmojiPicker";
 import type { ChatEngine } from "./useChatEngine";
 
 type Props = {
@@ -233,6 +235,12 @@ function Conversation({
   const peer = dm ? (online.find((p) => p.identity === peerOf(key)) ?? convo?.peer) : undefined;
   const peerOnline = dm && onlineIds.has(peerOf(key));
   const typing = chat.typingNames(key);
+  const insertEmoji = useEmojiInsert(inputRef, text, setText, MAX_TEXT);
+  function addEmoji(emoji: string) {
+    insertEmoji(emoji);
+    if (error) setError(null);
+    sendTyping();
+  }
 
   // Stay at the bottom as messages arrive, unless the person scrolled up to read.
   const stick = useRef(true);
@@ -343,6 +351,7 @@ function Conversation({
           void submit();
         }}
       >
+        <EmojiPicker onPick={addEmoji} disabled={dm && !peerOnline} />
         <label className="sr-only" htmlFor="chat-text">
           Message
         </label>
@@ -398,7 +407,7 @@ function Bubble({ m, prev, dm }: { m: ChatMessage; prev?: ChatMessage; dm: boole
           {!m.mine && !dm && !grouped ? <Avatar name={m.name} color={m.color} size="xs" /> : null}
           <div className="bubble">
             {!m.mine && !dm && !grouped ? <span className={`bubble-name c-${m.color}`}>{m.name}</span> : null}
-            <p>{m.text}</p>
+            <p className={isEmojiOnly(m.text) ? "big-emoji" : undefined}>{m.text}</p>
             <span className="bubble-meta">
               <time dateTime={new Date(m.at).toISOString()}>{timeFmt.format(m.at)}</time>
               {m.mine && dm ? (

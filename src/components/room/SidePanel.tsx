@@ -3,7 +3,9 @@
 import { useChat, useParticipants, useIsSpeaking } from "@livekit/components-react";
 import { Track, type Participant } from "livekit-client";
 import { useEffect, useId, useRef, useState } from "react";
+import { isEmojiOnly } from "@/lib/emoji";
 import { Avatar } from "../Avatar";
+import { EmojiPicker, useEmojiInsert } from "../chat/EmojiPicker";
 import { Icon } from "../Icon";
 
 export type PanelTab = "chat" | "people";
@@ -73,6 +75,8 @@ function Chat({ chat }: { chat: ChatApi }) {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<HTMLOListElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const addEmoji = useEmojiInsert(inputRef, text, setText, 1000);
   const { chatMessages, send, isSending } = chat;
 
   useEffect(() => {
@@ -107,7 +111,7 @@ function Chat({ chat }: { chat: ChatApi }) {
             if (sameAuthor) {
               return (
                 <li key={m.id} className="msg cont">
-                  <p>{m.message}</p>
+                  <p className={isEmojiOnly(m.message) ? "big-emoji" : undefined}>{m.message}</p>
                 </li>
               );
             }
@@ -118,18 +122,20 @@ function Chat({ chat }: { chat: ChatApi }) {
                   <strong>{name}</strong>
                   <time dateTime={new Date(m.timestamp).toISOString()}>{timeFmt.format(m.timestamp)}</time>
                 </header>
-                <p>{m.message}</p>
+                <p className={isEmojiOnly(m.message) ? "big-emoji" : undefined}>{m.message}</p>
               </li>
             );
           })
         )}
       </ol>
       <form className="composer" onSubmit={submit}>
+        <EmojiPicker onPick={addEmoji} />
         <label className="sr-only" htmlFor="chat-input">
           Message
         </label>
         <textarea
           id="chat-input"
+          ref={inputRef}
           className="input"
           rows={1}
           value={text}

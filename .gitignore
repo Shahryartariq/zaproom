@@ -10,3 +10,6 @@ next-env.d.ts
 playwright-report
 test-results
 .DS_Store
+
+# Written by `next dev` for coding agents
+AGENTS.md
