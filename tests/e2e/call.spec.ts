@@ -35,6 +35,10 @@ test("two people share a room: video, audio, chat, reactions and leaving", async
   await form.getByRole("button", { name: "Start room" }).click();
   await expect(alice).toHaveURL(/\/r\/[a-z2-9-]+\?new=1$/);
   const roomPath = new URL(alice.url()).pathname;
+  // A public room's invite link previews with its name, and is still kept out of search.
+  const preview = await (await request.get(roomPath)).text();
+  expect(preview).toContain('<meta property="og:title" content="Join “E2E room” on Zaproom"');
+  expect(preview).toContain('<meta name="robots" content="noindex, nofollow"');
   await alice.getByRole("button", { name: "Join room" }).click();
   await expect(alice.locator(".call")).toBeVisible();
   await expect(alice.locator(".tile")).toHaveCount(1);

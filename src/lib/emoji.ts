@@ -304,17 +304,23 @@ export const EMOJI_GROUPS: EmojiGroup[] = Object.entries(RAW).map(([name, list])
 const ALL: Emoji[] = EMOJI_GROUPS.flatMap((g) => g.items);
 const KNOWN = new Set(ALL.map((e) => e.char));
 
-/** Emoji whose name or keywords start with every word of the query. */
+/**
+ * Emoji whose name or keywords start with every word of the query. Exact names come
+ * first ("fire" → 🔥 before ❤️‍🔥), then names that start with the query, then the rest.
+ */
 export function searchEmoji(query: string, limit = 64): Emoji[] {
-  const terms = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  const q = query.toLowerCase().trim().replace(/\s+/g, " ");
+  const terms = q.split(" ").filter(Boolean);
   if (!terms.length) return [];
-  const out: Emoji[] = [];
-  for (const e of ALL) {
+  const rank = (e: Emoji) => (e.name === q ? 0 : e.name.startsWith(q) ? 1 : 2);
+  return ALL.filter((e) => {
     const words = e.words.split(" ");
-    if (terms.every((t) => words.some((w) => w.startsWith(t)))) out.push(e);
-    if (out.length >= limit) break;
-  }
-  return out;
+    return terms.every((t) => words.some((w) => w.startsWith(t)));
+  })
+    .map((e, i) => ({ e, i, r: rank(e) }))
+    .sort((a, b) => a.r - b.r || a.i - b.i)
+    .slice(0, limit)
+    .map(({ e }) => e);
 }
 
 export const RECENT_KEY = "zaproom:emoji-recent";
