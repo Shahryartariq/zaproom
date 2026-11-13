@@ -1,3 +1,4 @@
+import { logEvent } from "@/lib/visitors.server";
 import { liveKitConfig } from "@/lib/config";
 import { NOT_CONFIGURED, error, json, limited, readBody, sameOrigin } from "@/lib/http";
 import { createRoom, lobbySnapshot } from "@/lib/livekit.server";
@@ -56,5 +57,7 @@ export async function POST(req: Request) {
     return error(502, "Couldn't create the room. Try again in a moment.");
   }
   cached = null;
+  const { title, topic, kind, visibility } = body.data;
+  logEvent({ type: "room_created", room: id, detail: { title, topic, kind, visibility } });
   return json({ id }, 201);
 }

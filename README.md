@@ -20,6 +20,7 @@ Video, voice and text chat in the browser. Pick a name, start a room, step into 
 - **Meet a stranger.** Random one-to-one matching with the camera off by default. Press **Next** to skip, and if your match never connects you're put back in line automatically.
 - **A pre-join screen** with a camera preview, a live mic meter, and camera and microphone pickers.
 - **In the call:** speaking rings, mute indicators, connection quality bars, join and leave notices, an unread badge on chat, and clear messages when the connection drops or the room closes.
+- **Admin panel** at `/admin`, behind a password. A visitor log in Postgres records each visitor's IP, approximate location, browser, device, screen, language, referrer and campaign tags, the pages they open and for how long, the names they use, and what they do (rooms created or joined, chat, stranger matches, messages sent, never message text). The overview has live counts, a daily chart and top pages, places, sources and devices. You can search visitors, open a full timeline for each one, export CSV, and delete a visitor's records. **Live rooms** lists every open room, private ones included, with who is inside: close a room or remove a person, and jump to that person's visitor record. The privacy page says exactly what is logged.
 - **Light, dark and match-device themes** with no flash on load, a layout that works down to phone size, keyboard support throughout, and reduced motion respected.
 
 | Live lobby | Light theme | On a phone |
@@ -29,6 +30,10 @@ Video, voice and text chat in the browser. Pick a name, start a room, step into 
 | Chat on a phone | Notification settings |
 | --- | --- |
 | ![Chat list on a phone with the global chat and people online](docs/screenshots/chat-phone.png) | ![Settings with six notification sounds, volume and switches](docs/screenshots/settings-phone.png) |
+
+| Admin overview | One visitor's record |
+| --- | --- |
+| ![Admin overview with live counts, a daily chart and top pages, countries, cities and sources](docs/screenshots/admin-overview.png) | ![A visitor's details (IP, location, browser, screen, campaign) and timeline of pages and activity](docs/screenshots/admin-visitor.png) |
 
 ## How it works
 
@@ -53,10 +58,11 @@ flowchart LR
 - Every API route checks the request's origin, size limit and schema (zod), and rate-limits by IP.
 - Room pages are `noindex`, and their titles never include the room name. If analytics is on, `/r/<id>` is rewritten to `/r/room` before anything is sent.
 - The lobby shows names only for public rooms. Private rooms and stranger chats only add to the total number of people online.
+- The admin panel uses a signed, HttpOnly, `SameSite=Strict` session cookie (12 hours; changing the password signs everyone out), a timing-safe password check and 5 sign-in tries per 15 minutes. Its actions are plain form posts checked for origin. The admin's own visits are not logged, and old records are deleted after a year.
 
 ## Tech stack
 
-Next.js 16 (App Router), React 19, TypeScript (strict), LiveKit (`livekit-client`, `@livekit/components-react` hooks, `livekit-server-sdk`), zod and hand-written CSS. Vitest and Playwright (with axe) for tests, and GitHub Actions for CI. Fonts are Unbounded and Hanken Grotesk, self-hosted.
+Next.js 16 (App Router), React 19, TypeScript (strict), LiveKit (`livekit-client`, `@livekit/components-react` hooks, `livekit-server-sdk`), Postgres (Neon) through `postgres.js` for the visitor log, zod and hand-written CSS. Vitest and Playwright (with axe) for tests, and GitHub Actions for CI. Fonts are Unbounded and Hanken Grotesk, self-hosted.
 
 ## Run it locally
 
@@ -84,6 +90,10 @@ Open http://localhost:3000 in two browser windows to call yourself.
 | `SITE_URL` | in production | Canonical links, sitemap and Open Graph |
 | `GA_MEASUREMENT_ID` | no | Google Analytics 4 |
 | `GOOGLE_SITE_VERIFICATION` | no | Search Console HTML-tag verification |
+| `DATABASE_URL` | for the visitor log | Postgres connection string (Neon from the Vercel Marketplace sets it). Tables are created on first use |
+| `ADMIN_PASSWORD` | for `/admin` | 12 characters or more. Without it the admin panel stays switched off |
+| `VISITOR_RETENTION_DAYS` | no | How long visitor records are kept (default 365) |
+| `ADMIN_TIMEZONE` | no | Time zone for the admin's dates and daily chart (default `Asia/Karachi`) |
 
 Without the LiveKit variables the site still runs and says that calls are switched off.
 
@@ -91,8 +101,10 @@ Without the LiveKit variables the site still runs and says that calls are switch
 
 ```bash
 pnpm lint && pnpm typecheck
-pnpm test            # unit: validation, room ids, matching, tickets, rate limits, chat packets and state, settings
+pnpm test            # unit: validation, room ids, matching, tickets, rate limits, chat, settings, admin sessions
+TEST_DATABASE_URL=postgres://… pnpm test   # also runs the visitor-log tests against a real Postgres
 PW_CHROME=1 pnpm e2e # browser: lobby, forms, pre-join, themes, axe in both themes, headers, API guards (desktop + phone)
+E2E_DATABASE_URL=postgres://… PW_CHROME=1 pnpm e2e   # adds the admin panel tests
 pnpm e2e:call        # real calls: needs a LiveKit server and the env vars above
 ```
 
@@ -102,7 +114,8 @@ CI runs everything on each pull request. The **calls** job starts `livekit-serve
 
 1. Import the repo on Vercel.
 2. Add `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` and `SITE_URL` (Production).
-3. Deploy. Previews without LiveKit keys still build and show the "calls are switched off" notice.
+3. For the admin panel: Storage → add Neon (free), which sets `DATABASE_URL`, then add `ADMIN_PASSWORD`.
+4. Deploy. Previews without LiveKit keys still build and show the "calls are switched off" notice.
 
 ## Project layout
 

@@ -1,3 +1,4 @@
+import { logEvent } from "@/lib/visitors.server";
 import { z } from "@/lib/zod";
 import { liveKitConfig } from "@/lib/config";
 import { NOT_CONFIGURED, error, json, limited, readBody, sameOrigin } from "@/lib/http";
@@ -27,11 +28,14 @@ export async function POST(req: Request) {
     if (!room || room.meta.visibility === "stranger") return error(404, "This room doesn't exist or has closed.");
     const limit = roomLimit(room.meta.kind);
     if (room.count >= limit) return error(409, `This room is full (${limit} people). Try again later or start your own.`);
-    const token = await mintToken(cfg, {
-      roomId,
-      identity: `g_${crypto.randomUUID()}`,
-      profile: { name, color },
-      kind: room.meta.kind,
+    const identity = `g_${crypto.randomUUID()}`;
+    const token = await mintToken(cfg, { roomId, identity, profile: { name, color }, kind: room.meta.kind });
+    logEvent({
+      type: "room_joined",
+      room: roomId,
+      name,
+      identity,
+      detail: { title: room.meta.title, kind: room.meta.kind, visibility: room.meta.visibility },
     });
     return json({ token, url: cfg.url });
   } catch (e) {

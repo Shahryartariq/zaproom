@@ -1,3 +1,4 @@
+import { logEvent } from "@/lib/visitors.server";
 import { z } from "@/lib/zod";
 import { liveKitConfig } from "@/lib/config";
 import { DEVICE_KEY, deviceIdentity } from "@/lib/device";
@@ -29,6 +30,7 @@ export async function POST(req: Request) {
   try {
     await ensureLoungeRoom(cfg);
     const token = await mintToken(cfg, { roomId: LOUNGE_ROOM, identity, profile: { name, color }, kind: "text" });
+    logEvent({ type: "chat_joined", room: LOUNGE_ROOM, name, identity });
     return json({ token, url: cfg.url, identity });
   } catch (e) {
     console.error("[chat] token failed", e);

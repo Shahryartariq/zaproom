@@ -1,6 +1,7 @@
 "use client";
 
 import { useParticipants, useRoomContext } from "@livekit/components-react";
+import { countMessage } from "@/lib/activity";
 import { RoomEvent, type Participant, type RemoteParticipant } from "livekit-client";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import { CHAT_TOPIC, TYPING_TOPIC, decodePacket, encodePacket, newMessageId, prepareText } from "@/lib/chat/protocol";
@@ -255,6 +256,7 @@ export function useChatEngine({ storageKey, groupName, announceJoins }: Options)
         return false;
       }
       sentAt.current.push(now);
+      countMessage();
       const meP = toPerson(room.localParticipant);
       dispatch({
         type: "message",
