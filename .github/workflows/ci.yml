@@ -16,6 +16,20 @@ jobs:
   check:
     name: Lint, types, unit tests, build, browser tests
     runs-on: ubuntu-latest
+    # Postgres for the visitor log: unit tests and the admin panel's browser tests run against it.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          # A throwaway database for tests only; no password needed on the runner.
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: zaproom
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://postgres@localhost:5432/zaproom
+      E2E_DATABASE_URL: postgres://postgres@localhost:5432/zaproom
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

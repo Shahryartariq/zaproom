@@ -1,6 +1,6 @@
 import "server-only";
 import { NextResponse } from "next/server";
-import type { z } from "zod";
+import type { z } from "@/lib/zod";
 import { clientKey, type RateLimiter } from "./rate-limit";
 
 export function json(body: unknown, status = 200, headers: Record<string, string> = {}) {

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import type { AvatarColorId } from "./profile";
 
 export const QUEUE_ROOM = "zaproom-strangers-queue";

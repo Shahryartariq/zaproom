@@ -13,9 +13,19 @@ type Props = {
   groupHint: string;
   storageKey?: string;
   announceJoins: boolean;
-  onDisconnected: (reason?: DisconnectReason) => void;
+  onDisconnected: (reason: ChatEndReason) => void;
   headerExtra?: React.ReactNode;
 };
+
+/** Why the chat connection ended, in terms the screens care about. */
+export type ChatEndReason = "left" | "elsewhere" | "closed" | "dropped";
+
+function endReason(reason?: DisconnectReason): ChatEndReason {
+  if (reason === DisconnectReason.CLIENT_INITIATED) return "left";
+  if (reason === DisconnectReason.DUPLICATE_IDENTITY) return "elsewhere";
+  if (reason === DisconnectReason.ROOM_DELETED || reason === DisconnectReason.ROOM_CLOSED) return "closed";
+  return "dropped";
+}
 
 /** A text-only LiveKit connection: no camera, no microphone, just data packets. */
 export function ChatApp({ conn, onDisconnected, ...rest }: Props) {
@@ -29,7 +39,7 @@ export function ChatApp({ conn, onDisconnected, ...rest }: Props) {
       audio={false}
       video={false}
       options={options}
-      onDisconnected={onDisconnected}
+      onDisconnected={(reason) => onDisconnected(endReason(reason))}
       onError={(e) => {
         // Leaving or switching tabs cancels a pending connect; that isn't an error.
         if (!/client initiated/i.test(e.message)) console.error("[chat]", e);
