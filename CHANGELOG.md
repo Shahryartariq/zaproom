@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **Admin panel** at `/admin` (password from `ADMIN_PASSWORD`): live counts, a daily chart, top pages, countries, cities, sources, browsers, systems, devices and languages, and a feed of recent activity.
+- **Visitor log** in Postgres: IP and approximate location, browser, device, screen, language, referrer and campaign tags, pages with time spent, names used, rooms created and joined, chat and stranger activity, and messages sent (counts only). Search, a timeline per visitor, CSV export and delete. Records are kept for a year.
+- **Live rooms** for the admin: every open room with who is inside; close a room or remove a person.
+- The privacy page lists everything the log records.
+
 ## 1.0.0 (2026-11-13)
 
 The first stable release. Live at https://zaproom.vercel.app.

@@ -3,6 +3,7 @@
 import { useChat, useParticipants, useIsSpeaking } from "@livekit/components-react";
 import { Track, type Participant } from "livekit-client";
 import { useEffect, useId, useRef, useState } from "react";
+import { countMessage } from "@/lib/activity";
 import { isEmojiOnly } from "@/lib/emoji";
 import { Avatar } from "../Avatar";
 import { EmojiPicker, useEmojiInsert } from "../chat/EmojiPicker";
@@ -91,6 +92,7 @@ function Chat({ chat }: { chat: ChatApi }) {
     if (message.length > 1000) return setError("Keep messages under 1,000 characters.");
     try {
       await send(message);
+      countMessage();
       setText("");
       setError(null);
     } catch {

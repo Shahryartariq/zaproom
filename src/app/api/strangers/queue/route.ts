@@ -1,3 +1,4 @@
+import { logEvent } from "@/lib/visitors.server";
 import { liveKitConfig } from "@/lib/config";
 import { NOT_CONFIGURED, error, json, limited, readBody, sameOrigin } from "@/lib/http";
 import { ensureQueueRoom, mintToken } from "@/lib/livekit.server";
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
       kind: "voice",
       listenOnly: true,
     });
+    logEvent({ type: "stranger_queued", name: body.data.name, identity });
     return json({ token, url: cfg.url, ticket: signTicket(identity, cfg.apiSecret) });
   } catch (e) {
     console.error("[strangers] queue failed", e);
