@@ -74,7 +74,7 @@ test("visits show up with location, device, pages and time, and can be deleted",
   for (const path of ["/?utm_source=e2e", "/chat", "/privacy"]) await expect(timeline).toContainText(path);
   await expect(a.locator(".admin-facts")).toContainText("e2e");
   await expect(a.locator(".admin-facts")).toContainText("Asia/Karachi");
-  await expect(a.getByRole("link", { name: "Map" })).toHaveAttribute("href", /openstreetmap\.org/);
+  await expect(a.getByRole("link", { name: "Map" })).toHaveAttribute("href", /^https:\/\/www\.openstreetmap\.org\//);
 
   // Block for an hour, then lift it.
   await expect(a.locator(".admin-facts")).toContainText("Can join");
