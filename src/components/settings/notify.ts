@@ -25,7 +25,7 @@ export function notify(n: Notice): void {
     Notification.permission === "granted"
   ) {
     try {
-      const note = new Notification(n.title, { body: n.body.slice(0, 140), tag: n.tag, icon: "/icon.svg", silent: true });
+      const note = new Notification(n.title, { body: n.body.slice(0, 140), tag: n.tag, icon: "/icon-192.png", silent: true });
       note.onclick = () => {
         window.focus();
         note.close();

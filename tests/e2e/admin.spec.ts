@@ -76,6 +76,16 @@ test("visits show up with location, device, pages and time, and can be deleted",
   await expect(a.locator(".admin-facts")).toContainText("Asia/Karachi");
   await expect(a.getByRole("link", { name: "Map" })).toHaveAttribute("href", /openstreetmap\.org/);
 
+  // Block for an hour, then lift it.
+  await expect(a.locator(".admin-facts")).toContainText("Can join");
+  await a.getByLabel("Block from joining for").selectOption("1");
+  await a.getByRole("button", { name: "Block", exact: true }).click();
+  await expect(a.getByRole("status")).toContainText("Blocked.");
+  await expect(a.locator(".admin-facts")).toContainText("Blocked until");
+  await a.getByRole("button", { name: "Lift the block" }).click();
+  await expect(a.getByRole("status")).toContainText("Block lifted");
+  await expect(a.locator(".admin-facts")).toContainText("Can join");
+
   // Deleting needs the confirmation box.
   await a.getByText("Delete this visitor").click();
   await a.getByLabel(/Delete their details/).check();

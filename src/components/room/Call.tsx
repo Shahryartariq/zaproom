@@ -17,6 +17,8 @@ import { notify } from "../settings/notify";
 import { ControlBar } from "./ControlBar";
 import { CopyInvite } from "./CopyInvite";
 import { Reactions, useReactions } from "./Reactions";
+import { limitBySender } from "@/lib/chat/flood";
+import { CALL_CONNECT_FAILED } from "@/lib/fetch-json";
 import { SidePanel, type PanelTab } from "./SidePanel";
 import { Tile } from "./Tile";
 import type { Connection, MediaChoices, RoomInfo } from "./types";
@@ -36,6 +38,13 @@ type Props = {
 
 export function Call({ info, conn, media, onLeave, topExtra, onAlone, noShowMs }: Props) {
   const leftOnPurpose = useRef(false);
+  const connected = useRef(false);
+  const ended = useRef(false);
+  const end = (reason: string) => {
+    if (ended.current) return;
+    ended.current = true;
+    onLeave(reason);
+  };
   const voice = info.kind === "voice";
 
   const roomOptions = useMemo(
@@ -67,12 +76,16 @@ export function Call({ info, conn, media, onLeave, topExtra, onAlone, noShowMs }
       audio={audio}
       video={video}
       options={roomOptions}
+      onConnected={() => (connected.current = true)}
       onDisconnected={(reason) => {
-        if (leftOnPurpose.current) return onLeave("You can rejoin while the room is open.");
-        onLeave(disconnectMessage(reason));
+        if (leftOnPurpose.current) return end("You can rejoin while the room is open.");
+        end(disconnectMessage(reason));
       }}
       onError={(e) => {
-        if (!/client initiated/i.test(e.message)) console.error("[call]", e);
+        if (/client initiated/i.test(e.message)) return;
+        console.error("[call]", e);
+        // The call never connected: explain instead of showing "Connecting…" forever.
+        if (!connected.current) end(CALL_CONNECT_FAILED);
       }}
     >
       <CallInner
@@ -120,9 +133,12 @@ function CallInner({
   const participants = useParticipants();
   const { canPlayAudio, startAudio } = useAudioPlayback();
   const [panel, setPanel] = useState<PanelTab | null>(null);
-  const toasts = useJoinLeaveToasts();
+  const toasts = useCallToasts();
   const reactions = useReactions();
-  const chat = useChat();
+  const rawChat = useChat();
+  // Drop messages from anyone sending far faster than a person can type.
+  const shown = useMemo(() => limitBySender(rawChat.chatMessages), [rawChat.chatMessages]);
+  const chat = useMemo(() => ({ ...rawChat, chatMessages: shown }), [rawChat, shown]);
   const unread = useUnread(chat.chatMessages, panel === "chat", room.localParticipant.identity);
   useChatSound(chat.chatMessages, panel === "chat", room.localParticipant.identity, info.title);
 
@@ -226,21 +242,46 @@ function CallInner({
   );
 }
 
-function useJoinLeaveToasts() {
+/** What to say when the camera or microphone can't start during a call. */
+export function deviceProblem(error: Error | undefined): string {
+  switch (error?.name) {
+    case "NotAllowedError":
+    case "SecurityError":
+      return "Your camera or microphone is blocked. Allow it in your browser's site settings.";
+    case "NotReadableError":
+    case "AbortError":
+      return "Your camera or microphone is busy in another app.";
+    case "NotFoundError":
+    case "OverconstrainedError":
+      return "No camera or microphone was found.";
+    default:
+      return "Your camera or microphone couldn't start.";
+  }
+}
+
+/** Join and leave notices, plus camera and microphone problems. */
+function useCallToasts() {
   const room = useRoomContext();
   const [toasts, setToasts] = useState<{ id: number; text: string }[]>([]);
   useEffect(() => {
     let n = 0;
-    const push = (text: string) => {
+    const push = (text: string, ms = 3500) => {
       const id = ++n;
-      setToasts((t) => [...t.slice(-2), { id, text }]);
-      setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500);
+      setToasts((t) => [...t.filter((x) => x.text !== text).slice(-2), { id, text }]);
+      setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), ms);
     };
     const joined = (p: Participant) => push(`${p.name || "Someone"} joined`);
     const left = (p: Participant) => push(`${p.name || "Someone"} left`);
-    room.on(RoomEvent.ParticipantConnected, joined).on(RoomEvent.ParticipantDisconnected, left);
+    const device = (e: Error) => push(deviceProblem(e), 7000);
+    room
+      .on(RoomEvent.ParticipantConnected, joined)
+      .on(RoomEvent.ParticipantDisconnected, left)
+      .on(RoomEvent.MediaDevicesError, device);
     return () => {
-      room.off(RoomEvent.ParticipantConnected, joined).off(RoomEvent.ParticipantDisconnected, left);
+      room
+        .off(RoomEvent.ParticipantConnected, joined)
+        .off(RoomEvent.ParticipantDisconnected, left)
+        .off(RoomEvent.MediaDevicesError, device);
     };
   }, [room]);
   return toasts;

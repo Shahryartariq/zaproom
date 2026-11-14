@@ -5,7 +5,9 @@ import { Avatar } from "../Avatar";
 import { Icon } from "../Icon";
 import { preloadLive } from "../live";
 import { ProfileFields } from "../ProfileFields";
+import { useHydrated } from "../useHydrated";
 import { useProfileDraft } from "../useProfileDraft";
+import { postJson } from "@/lib/fetch-json";
 import type { Connection, MediaChoices, RoomInfo } from "./types";
 
 type Props = {
@@ -20,6 +22,7 @@ export function PreJoin({ info, onJoin }: Props) {
   const { bindVideo, ...media } = useLocalPreview(!voice);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const hydrated = useHydrated();
 
   async function join(e: React.FormEvent) {
     e.preventDefault();
@@ -27,21 +30,15 @@ export function PreJoin({ info, onJoin }: Props) {
     if (!profile) return;
     setBusy(true);
     setError(null);
-    try {
-      const res = await fetch("/api/token", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ roomId: info.id, ...profile }),
-      });
-      const data = (await res.json()) as Partial<Connection> & { error?: string };
-      if (!res.ok || !data.token || !data.url) throw new Error(data.error ?? "Couldn't join the room.");
+    const result = await postJson<Connection>("/api/token", { roomId: info.id, ...profile }, "Couldn't join the room.");
+    if (result.ok && result.data.token && result.data.url) {
       const choices = media.choices();
       media.stop();
-      onJoin({ token: data.token, url: data.url }, choices);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't join the room.");
-      setBusy(false);
+      onJoin({ token: result.data.token, url: result.data.url }, choices);
+      return;
     }
+    setError(result.ok ? "Couldn't join the room." : result.error);
+    setBusy(false);
   }
 
   const inside = info.count === 0 ? "Nobody's here yet" : `${info.count} ${info.count === 1 ? "person" : "people"} inside`;
@@ -154,7 +151,7 @@ export function PreJoin({ info, onJoin }: Props) {
           </p>
         ) : null}
 
-        <button className="btn primary big" type="submit" disabled={busy}>
+        <button className="btn primary big" type="submit" disabled={busy || !hydrated}>
           {busy ? "Joining…" : "Join room"}
         </button>
       </div>

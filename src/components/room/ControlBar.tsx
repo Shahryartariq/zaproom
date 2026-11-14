@@ -51,7 +51,7 @@ export function ControlBar({ voice, panel, onPanel, unread, onReact, onLeave, le
         className="ctl media"
         aria-pressed={mic.enabled}
         disabled={mic.pending}
-        onClick={() => void mic.toggle()}
+        onClick={() => void mic.toggle().catch(() => {})}
         aria-label={mic.enabled ? "Mute microphone" : "Unmute microphone"}
         title={mic.enabled ? "Mute" : "Unmute"}
       >
@@ -62,7 +62,7 @@ export function ControlBar({ voice, panel, onPanel, unread, onReact, onLeave, le
           className="ctl media"
           aria-pressed={cam.enabled}
           disabled={cam.pending}
-          onClick={() => void cam.toggle()}
+          onClick={() => void cam.toggle().catch(() => {})}
           aria-label={cam.enabled ? "Turn camera off" : "Turn camera on"}
           title={cam.enabled ? "Camera off" : "Camera on"}
         >
@@ -74,7 +74,7 @@ export function ControlBar({ voice, panel, onPanel, unread, onReact, onLeave, le
           className="ctl toggle"
           aria-pressed={screen.enabled}
           disabled={screen.pending}
-          onClick={() => void screen.toggle()}
+          onClick={() => void screen.toggle().catch(() => {})}
           aria-label={screen.enabled ? "Stop sharing your screen" : "Share your screen"}
           title={screen.enabled ? "Stop sharing" : "Share screen"}
         >

@@ -87,6 +87,16 @@ create table if not exists zr_events (
 create index if not exists zr_events_visitor on zr_events (visitor_id, at desc);
 create index if not exists zr_events_at on zr_events (at desc);
 create index if not exists zr_events_identity on zr_events (identity);
+
+create table if not exists zr_blocks (
+  id bigserial primary key,
+  visitor_id uuid,
+  ip text,
+  created_at timestamptz not null default now(),
+  until timestamptz not null,
+  reason text
+);
+create index if not exists zr_blocks_until on zr_blocks (until);
 `;
 
 /** The shared connection, with the tables created on first use. Null when there's no database. */
@@ -94,8 +104,9 @@ export async function db(): Promise<Sql | null> {
   const url = databaseUrl();
   if (!url) return null;
   client ??= postgres(url, {
-    // Serverless functions: one connection each, through Neon's pooler.
-    max: 1,
+    // A few connections per function instance, through Neon's pooler: the admin overview
+    // runs a dozen queries at once, and one connection would run them one after another.
+    max: 5,
     prepare: false,
     idle_timeout: 20,
     connect_timeout: 10,

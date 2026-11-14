@@ -19,7 +19,7 @@ export function CopyInvite({ roomId }: { roomId: string }) {
   }
 
   return (
-    <button className="btn ghost" onClick={copy} aria-live="polite">
+    <button type="button" className="btn ghost" onClick={copy} aria-live="polite">
       <Icon name={copied ? "check" : "link"} />
       <span className="text">{copied ? "Link copied" : "Copy invite link"}</span>
     </button>

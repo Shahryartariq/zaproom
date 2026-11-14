@@ -23,6 +23,7 @@ export function Lobby() {
           const res = await fetch("/api/rooms", { cache: "no-store" });
           if (!res.ok) throw new Error(String(res.status));
           const data = (await res.json()) as LobbySnapshot;
+          if (typeof data.online !== "number") throw new Error("Unexpected answer");
           if (!stop) {
             setSnapshot(data);
             setFailed(false);

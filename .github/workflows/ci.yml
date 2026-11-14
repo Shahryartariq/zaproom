@@ -16,6 +16,7 @@ jobs:
   check:
     name: Lint, types, unit tests, build, browser tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     # Postgres for the visitor log: unit tests and the admin panel's browser tests run against it.
     services:
       postgres:
@@ -38,6 +39,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Known vulnerabilities in dependencies
+        run: pnpm audit --audit-level high
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
@@ -56,11 +59,23 @@ jobs:
   calls:
     name: Real calls against LiveKit
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Postgres too, so moderation (remove, block, close) is tested end to end.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: zaproom
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       LIVEKIT_URL: ws://localhost:7880
       LIVEKIT_API_KEY: devkey
       LIVEKIT_API_SECRET: secret
       SITE_URL: http://localhost:3100
+      E2E_DATABASE_URL: postgres://postgres@localhost:5432/zaproom
     steps:
       - uses: actions/checkout@v4
       - name: Start LiveKit (dev mode)

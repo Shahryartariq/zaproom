@@ -1,4 +1,4 @@
-import { logEvent } from "@/lib/visitors.server";
+import { BLOCKED_MESSAGE, isBlockedRequest, logEvent } from "@/lib/visitors.server";
 import { z } from "@/lib/zod";
 import { liveKitConfig } from "@/lib/config";
 import { DEVICE_KEY, deviceIdentity } from "@/lib/device";
@@ -24,6 +24,7 @@ export async function POST(req: Request) {
 
   const body = await readBody(req, bodySchema);
   if ("response" in body) return body.response;
+  if (await isBlockedRequest()) return error(403, BLOCKED_MESSAGE);
   const { device, name, color } = body.data;
   const identity = deviceIdentity(device, cfg.apiSecret);
 

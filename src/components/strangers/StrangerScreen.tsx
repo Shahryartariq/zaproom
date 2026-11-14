@@ -8,7 +8,9 @@ import { Icon } from "../Icon";
 import { ProfileFields } from "../ProfileFields";
 import { Call, preloadLive } from "../live";
 import type { Connection, RoomInfo } from "../room/types";
+import { useHydrated } from "../useHydrated";
 import { useProfileDraft } from "../useProfileDraft";
+import { postJson, readJson } from "@/lib/fetch-json";
 
 type Phase =
   | { step: "intro"; note?: string }
@@ -24,8 +26,14 @@ export function StrangerScreen() {
   const [phase, setPhase] = useState<Phase>({ step: "intro" });
   const callKey = useRef(0);
   const queue = useRef<{ room: Room; stop: () => void } | null>(null);
+  // Every search gets a number. Stopping, leaving the page or starting another search
+  // makes older ones stale, so a slow request can't put you back in line afterwards.
+  const generation = useRef(0);
+  const hydrated = useHydrated();
+  const again = useRef<(note?: string) => void>(() => {});
 
   const leaveQueue = useCallback(() => {
+    generation.current += 1;
     queue.current?.stop();
     queue.current = null;
   }, []);
@@ -37,19 +45,20 @@ export function StrangerScreen() {
       const profile = draft.commit();
       if (!profile) return setPhase({ step: "intro" });
       leaveQueue();
+      const mine = generation.current;
+      const stale = () => generation.current !== mine;
       setPhase({ step: "searching", note });
 
       try {
-        const res = await fetch("/api/strangers/queue", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(profile),
-        });
-        const data = (await res.json()) as Partial<Connection> & { ticket?: string; error?: string };
-        if (!res.ok || !data.token || !data.url || !data.ticket) throw new Error(data.error ?? "Couldn't join the line.");
+        const result = await postJson<Connection & { ticket: string }>("/api/strangers/queue", profile, "Couldn't join the line.");
+        if (stale()) return;
+        if (!result.ok) throw new Error(result.error);
+        const data = result.data;
+        if (!data.token || !data.url || !data.ticket) throw new Error("Couldn't join the line.");
 
         // Being connected to the hidden queue room is what keeps your place in line.
-        const { Room } = await import("livekit-client");
+        const { Room, RoomEvent } = await import("livekit-client");
+        if (stale()) return;
         const room: Room = new Room();
         let stopped = false;
         let timer: ReturnType<typeof setTimeout> | undefined;
@@ -61,7 +70,16 @@ export function StrangerScreen() {
             void room.disconnect();
           },
         };
+        // Losing the connection to the line loses your place: get back in instead of waiting forever.
+        room.once(RoomEvent.Disconnected, () => {
+          if (stopped || stale()) return;
+          again.current("You lost your place in line. Getting it back…");
+        });
         await room.connect(data.url, data.token, { autoSubscribe: false });
+        if (stale()) {
+          void room.disconnect();
+          return;
+        }
 
         const ticket = data.ticket;
         const poll = async () => {
@@ -72,8 +90,8 @@ export function StrangerScreen() {
               headers: { "content-type": "application/json" },
               body: JSON.stringify({ ticket }),
             });
-            const m = (await r.json()) as { status?: string; roomId?: string; token?: string; url?: string; error?: string };
-            if (stopped) return;
+            const m = await readJson<{ status: string; roomId: string; token: string; url: string }>(r);
+            if (stopped || stale()) return;
             if (r.status === 401 || r.status === 503) {
               leaveQueue();
               setPhase({ step: "intro", note: m.error ?? "Your place in line expired. Start again." });
@@ -97,12 +115,17 @@ export function StrangerScreen() {
         };
         void poll();
       } catch (err) {
+        if (stale()) return;
         leaveQueue();
         setPhase({ step: "intro", note: err instanceof Error ? err.message : "Couldn't join the line." });
       }
     },
     [draft, leaveQueue],
   );
+
+  useEffect(() => {
+    again.current = (note) => void search(note);
+  }, [search]);
 
   const cancel = () => {
     leaveQueue();
@@ -183,7 +206,7 @@ export function StrangerScreen() {
           <ul className="rules">
             <li>Your camera starts off. Your mic starts on, and you can mute it.</li>
             <li>Press Next to skip to someone else, or End to stop.</li>
-            <li>Nothing is recorded or stored. Be kind, and leave if anyone makes you uncomfortable.</li>
+            <li>Calls and messages are never recorded. Be kind, and leave if anyone makes you uncomfortable.</li>
             <li>Only for people aged 18 and over.</li>
           </ul>
           <form
@@ -208,7 +231,7 @@ export function StrangerScreen() {
                 {phase.note}
               </p>
             ) : null}
-            <button className="btn primary big" type="submit">
+            <button className="btn primary big" type="submit" disabled={!hydrated}>
               <Icon name="shuffle" />
               Start matching
             </button>

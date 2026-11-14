@@ -8,12 +8,17 @@ import { adminRooms, type AdminRoom } from "@/lib/livekit.server";
 
 export const metadata: Metadata = { title: "Live rooms" };
 
-const DONE: Record<string, string> = { closed: "Room closed. Everyone in it was disconnected.", removed: "Person removed from the room." };
+const DONE: Record<string, string> = {
+  closed: "Room closed. Everyone in it was disconnected.",
+  removed: "Person removed. They can join again.",
+  blocked: "Person removed and blocked for 24 hours. Unblock them from their visitor page.",
+};
 const ERRORS: Record<string, string> = {
   livekit: "LiveKit isn't configured.",
   builtin: "The global chat and the stranger queue can't be closed. Remove people instead.",
   input: "That action wasn't understood.",
   failed: "LiveKit didn't accept that. The room may already be closed.",
+  norecord: "There's no visitor record for that person, so they can only be removed, not blocked.",
 };
 
 export default async function AdminRooms({ searchParams }: PageProps<"/admin/rooms">) {
@@ -81,13 +86,17 @@ export default async function AdminRooms({ searchParams }: PageProps<"/admin/roo
                           </span>
                         </span>
                         {visitor ? <Link href={`/admin/visitors/${visitor}`}>Visitor</Link> : <span className="admin-muted">no record</span>}
-                        <form method="post" action="/api/admin/rooms">
-                          <input type="hidden" name="action" value="remove" />
+                        <form method="post" action="/api/admin/rooms" className="admin-actions">
                           <input type="hidden" name="room" value={room.id} />
                           <input type="hidden" name="identity" value={p.identity} />
-                          <button className="btn ghost" type="submit">
+                          <button className="btn ghost" type="submit" name="action" value="remove">
                             Remove
                           </button>
+                          {visitor ? (
+                            <button className="btn danger" type="submit" name="action" value="block">
+                              Remove and block 24 h
+                            </button>
+                          ) : null}
                         </form>
                       </li>
                     );

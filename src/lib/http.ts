@@ -41,8 +41,13 @@ export async function readBody<S extends z.ZodType>(
   return { data: parsed.data };
 }
 
-/** Blocks cross-site form posts. Browsers always send Origin on POST from scripts. */
+/**
+ * Blocks cross-site requests. Modern browsers say where a request came from in
+ * Sec-Fetch-Site; older ones still send Origin on every POST.
+ */
 export function sameOrigin(req: Request): boolean {
+  const site = req.headers.get("sec-fetch-site");
+  if (site && site !== "same-origin" && site !== "none") return false;
   const origin = req.headers.get("origin");
   if (!origin) return true;
   try {

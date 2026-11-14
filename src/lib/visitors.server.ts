@@ -175,3 +175,54 @@ export async function prune(sql: Sql, days = retentionDays()): Promise<void> {
   await sql`delete from zr_events where at < ${cutoff}`;
   await sql`delete from zr_visitors where last_seen < ${cutoff}`;
 }
+
+export const BLOCK_HOURS = [1, 24, 24 * 7, 24 * 30] as const;
+export const BLOCKED_MESSAGE = "You can't join right now. Try again later.";
+
+/** Blocks a visitor (by their id and last IP) from getting new passes for a while. */
+export async function blockVisitor(sql: Sql, visitorId: string, hours: number, reason: string | null): Promise<boolean> {
+  const [v] = await sql<{ ip: string | null }[]>`select ip from zr_visitors where id = ${visitorId}`;
+  if (!v) return false;
+  const until = new Date(Date.now() + hours * 60 * 60_000);
+  await sql`insert into zr_blocks (visitor_id, ip, until, reason) values (${visitorId}, ${v.ip}, ${until}, ${reason})`;
+  return true;
+}
+
+export async function unblockVisitor(sql: Sql, visitorId: string): Promise<void> {
+  await sql`update zr_blocks set until = now() where visitor_id = ${visitorId} and until > now()`;
+}
+
+/** When the block on this visitor or address ends, or null if there isn't one. */
+export async function blockedUntil(sql: Sql, visitorId: string | null, ip: string | null): Promise<Date | null> {
+  if (!visitorId && !ip) return null;
+  const [row] = await sql<{ until: Date }[]>`
+    select max(until) as until from zr_blocks
+    where until > now() and ((${visitorId}::uuid is not null and visitor_id = ${visitorId}::uuid) or (${ip}::text is not null and ip = ${ip}))
+    having max(until) is not null
+  `;
+  return row?.until ?? null;
+}
+
+/** For the routes that hand out passes: true when this request comes from a blocked visitor. */
+export async function isBlockedRequest(): Promise<boolean> {
+  try {
+    const sql = await db();
+    if (!sql) return false;
+    const [h, jar] = await Promise.all([headers(), cookies()]);
+    const cookie = jar.get(VISITOR_COOKIE)?.value;
+    return (await blockedUntil(sql, isUuid(cookie) ? cookie : null, requestInfo(h).ip)) !== null;
+  } catch (e) {
+    // The database being down must not lock everyone out.
+    console.error("[visitors] block check failed", e);
+    return false;
+  }
+}
+
+/** Failed admin sign-ins in the last 15 minutes: from this address, and from everywhere. */
+export async function recentLoginFailures(sql: Sql, ip: string | null): Promise<{ fromIp: number; total: number }> {
+  const [row] = await sql<{ from_ip: number; total: number }[]>`
+    select count(*) filter (where ip = ${ip})::int as from_ip, count(*)::int as total
+    from zr_events where type = 'admin_login_failed' and at > now() - interval '15 minutes'
+  `;
+  return { fromIp: row?.from_ip ?? 0, total: row?.total ?? 0 };
+}

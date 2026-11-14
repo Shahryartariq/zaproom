@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { deleteVisitor, listVisitors, overview, visitorDetail, visitorsByIdentity } from "@/lib/admin.server";
 import { closeDb, db } from "@/lib/db";
 import { requestInfo } from "@/lib/visitors";
-import { prune, recordEvent, recordLeave, recordView } from "@/lib/visitors.server";
+import { blockVisitor, blockedUntil, prune, recentLoginFailures, recordEvent, recordLeave, recordView, unblockVisitor } from "@/lib/visitors.server";
 
 // Runs against a real Postgres when TEST_DATABASE_URL is set (locally and in CI).
 const url = process.env.TEST_DATABASE_URL;
@@ -26,7 +26,7 @@ suite("visitor log in Postgres", () => {
   beforeAll(async () => {
     process.env.DATABASE_URL = url;
     const fresh = (await import("postgres")).default(url!, { onnotice: () => {} });
-    await fresh`drop table if exists zr_page_views, zr_events, zr_visitors`;
+    await fresh`drop table if exists zr_page_views, zr_events, zr_visitors, zr_blocks`;
     await fresh.end();
     sql = (await db())!;
   });
@@ -101,6 +101,24 @@ suite("visitor log in Postgres", () => {
     expect(detail?.timeline.filter((t) => t.kind === "view")).toHaveLength(3);
     expect(detail?.timeline.filter((t) => t.kind === "event")).toHaveLength(3);
     expect(await visitorDetail(sql, "55555555-5555-4555-8555-555555555555")).toBeNull();
+  });
+
+  it("blocks a visitor by id and by their address, until lifted", async () => {
+    expect(await blockedUntil(sql, A, null)).toBeNull();
+    expect(await blockVisitor(sql, A, 24, "spam")).toBe(true);
+    const until = await blockedUntil(sql, A, null);
+    expect(until!.getTime()).toBeGreaterThan(Date.now() + 23 * 3600_000);
+    // A new browser from the same address is blocked too; another address isn't.
+    expect(await blockedUntil(sql, null, "203.0.113.7")).not.toBeNull();
+    expect(await blockedUntil(sql, null, "192.0.2.1")).toBeNull();
+    expect(await blockVisitor(sql, "66666666-6666-4666-8666-666666666666", 24, null)).toBe(false);
+    await unblockVisitor(sql, A);
+    expect(await blockedUntil(sql, A, "203.0.113.7")).toBeNull();
+  });
+
+  it("counts failed admin sign-ins per address and overall", async () => {
+    expect(await recentLoginFailures(sql, "203.0.113.7")).toEqual({ fromIp: 1, total: 1 });
+    expect(await recentLoginFailures(sql, "192.0.2.1")).toEqual({ fromIp: 0, total: 1 });
   });
 
   it("deletes a visitor with everything recorded about them, and prunes old rows", async () => {

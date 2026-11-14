@@ -16,7 +16,14 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Admin pages and API answers never belong in search results.
+      { source: "/admin/:path*", headers: noindex },
+      { source: "/admin", headers: noindex },
+      { source: "/api/:path*", headers: noindex },
+    ];
   },
 };
 

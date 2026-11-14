@@ -2,6 +2,7 @@
 
 import { useDataChannel } from "@livekit/components-react";
 import { useCallback, useState } from "react";
+import { REACTION_LIMIT, SenderLimit } from "@/lib/chat/flood";
 
 export const REACTIONS = [
   { emoji: "👍", label: "Thumbs up" },
@@ -22,6 +23,7 @@ let seq = 0;
 /** Emoji reactions over the data channel. Only the six known emoji are ever shown. */
 export function useReactions() {
   const [items, setItems] = useState<Floater[]>([]);
+  const [flood] = useState(() => new SenderLimit(REACTION_LIMIT.max, REACTION_LIMIT.windowMs));
 
   const show = useCallback((emoji: string, name: string) => {
     if (!ALLOWED.has(emoji)) return;
@@ -33,7 +35,7 @@ export function useReactions() {
   const { send } = useDataChannel("reactions", (msg) => {
     try {
       const { e } = JSON.parse(decoder.decode(msg.payload)) as { e?: string };
-      if (typeof e === "string") show(e, msg.from?.name || "Someone");
+      if (typeof e === "string" && flood.allow(msg.from?.identity ?? "?")) show(e, msg.from?.name || "Someone");
     } catch {
       // Ignore anything that isn't a reaction.
     }

@@ -2,7 +2,7 @@
 
 import { LiveKitRoom, useConnectionState, useRoomContext } from "@livekit/components-react";
 import { ConnectionState, DisconnectReason } from "livekit-client";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import type { Connection } from "../room/types";
 import { ChatShell } from "./ChatShell";
 import { useChatEngine } from "./useChatEngine";
@@ -18,18 +18,26 @@ type Props = {
 };
 
 /** Why the chat connection ended, in terms the screens care about. */
-export type ChatEndReason = "left" | "elsewhere" | "closed" | "dropped";
+export type ChatEndReason = "left" | "elsewhere" | "closed" | "removed" | "dropped" | "failed";
 
 function endReason(reason?: DisconnectReason): ChatEndReason {
   if (reason === DisconnectReason.CLIENT_INITIATED) return "left";
   if (reason === DisconnectReason.DUPLICATE_IDENTITY) return "elsewhere";
   if (reason === DisconnectReason.ROOM_DELETED || reason === DisconnectReason.ROOM_CLOSED) return "closed";
+  if (reason === DisconnectReason.PARTICIPANT_REMOVED) return "removed";
   return "dropped";
 }
 
 /** A text-only LiveKit connection: no camera, no microphone, just data packets. */
 export function ChatApp({ conn, onDisconnected, ...rest }: Props) {
   const options = useMemo(() => ({ adaptiveStream: false, dynacast: false }), []);
+  const connected = useRef(false);
+  const ended = useRef(false);
+  const end = (reason: ChatEndReason) => {
+    if (ended.current) return;
+    ended.current = true;
+    onDisconnected(reason);
+  };
   return (
     <LiveKitRoom
       className="chat-room"
@@ -39,10 +47,14 @@ export function ChatApp({ conn, onDisconnected, ...rest }: Props) {
       audio={false}
       video={false}
       options={options}
-      onDisconnected={(reason) => onDisconnected(endReason(reason))}
+      onConnected={() => (connected.current = true)}
+      onDisconnected={(reason) => end(endReason(reason))}
       onError={(e) => {
         // Leaving or switching tabs cancels a pending connect; that isn't an error.
-        if (!/client initiated/i.test(e.message)) console.error("[chat]", e);
+        if (/client initiated/i.test(e.message)) return;
+        console.error("[chat]", e);
+        // The connection never opened (a firewall, or the server is down): say so instead of spinning.
+        if (!connected.current) end("failed");
       }}
     >
       <ChatInner {...rest} />

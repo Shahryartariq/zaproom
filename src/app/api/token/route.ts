@@ -1,4 +1,4 @@
-import { logEvent } from "@/lib/visitors.server";
+import { BLOCKED_MESSAGE, isBlockedRequest, logEvent } from "@/lib/visitors.server";
 import { z } from "@/lib/zod";
 import { liveKitConfig } from "@/lib/config";
 import { NOT_CONFIGURED, error, json, limited, readBody, sameOrigin } from "@/lib/http";
@@ -22,6 +22,7 @@ export async function POST(req: Request) {
   const body = await readBody(req, bodySchema);
   if ("response" in body) return body.response;
   const { roomId, name, color } = body.data;
+  if (await isBlockedRequest()) return error(403, BLOCKED_MESSAGE);
 
   try {
     const room = await getRoom(cfg, roomId);
