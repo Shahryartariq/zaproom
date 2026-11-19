@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { E2E_ADMIN_PASSWORD } from "./tests/e2e/admin-password";
 
 const PORT = Number(process.env.PORT ?? 3100);
 const callTests = process.env.LIVEKIT_E2E === "1";
@@ -31,6 +32,9 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     env: {
       SITE_URL: `http://localhost:${PORT}`,
+      // The admin tests need a database; without E2E_DATABASE_URL they're skipped.
+      DATABASE_URL: process.env.E2E_DATABASE_URL ?? "",
+      ADMIN_PASSWORD: E2E_ADMIN_PASSWORD,
       ...(callTests ? {} : { LIVEKIT_URL: "", LIVEKIT_API_KEY: "", LIVEKIT_API_SECRET: "" }),
     },
   },

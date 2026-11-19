@@ -1,3 +1,4 @@
+import { logEvent } from "@/lib/visitors.server";
 import { z } from "@/lib/zod";
 import { liveKitConfig } from "@/lib/config";
 import { NOT_CONFIGURED, error, json, limited, readBody, sameOrigin } from "@/lib/http";
@@ -51,6 +52,13 @@ export async function POST(req: Request) {
     }
 
     const token = await mintToken(cfg, { roomId, identity: me, profile: profile.data, kind: "video" });
+    logEvent({
+      type: "stranger_matched",
+      room: roomId,
+      name: profile.data.name,
+      identity: me,
+      detail: result.status === "pair" ? { partner: result.partner } : undefined,
+    });
     return json({ status: "matched", roomId, token, url: cfg.url });
   } catch (e) {
     console.error("[strangers] match failed", e);

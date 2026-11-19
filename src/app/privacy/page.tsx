@@ -4,14 +4,33 @@ import { pageMeta } from "@/lib/seo";
 export const metadata: Metadata = pageMeta({
   path: "/privacy",
   title: "Privacy",
-  description: "What Zaproom keeps (almost nothing), how calls and messages travel, and what stays on your device.",
+  description: "What Zaproom records about visits, how calls and messages travel, and what stays on your device.",
 });
 
 export default function Privacy() {
   return (
     <article className="prose">
       <h1>Privacy</h1>
-      <p>Zaproom has no accounts and no database. Here is everything that happens with your data.</p>
+      <p>Zaproom has no accounts. Here is everything that happens with your data.</p>
+
+      <h2>Visitor log</h2>
+      <p>
+        To see how the site is used and to keep it safe, Zaproom keeps a log of visits that only the site owner can
+        read. For each visitor it records:
+      </p>
+      <ul>
+        <li>your IP address and the approximate location it points to (country, region and city);</li>
+        <li>your browser, operating system, device type, screen size, language and time zone;</li>
+        <li>the site that sent you here and any campaign tags in the link;</li>
+        <li>the pages you open, when, and how long you stay;</li>
+        <li>the names you type, and when you create or join a room, join the global chat or meet a stranger;</li>
+        <li>how many messages you send. The text of your messages is never recorded.</li>
+      </ul>
+      <p>
+        A cookie with a random id lets the log tell your visits apart. There are no advertising or tracking cookies
+        from other companies. Records are deleted after a year. To have yours removed sooner, open an issue on{" "}
+        <a href="https://github.com/Shahryartariq/zaproom/issues">GitHub</a>.
+      </p>
 
       <h2>Your name and colour</h2>
       <p>

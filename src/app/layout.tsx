@@ -6,6 +6,7 @@ import { Logo } from "@/components/Icon";
 import { NavLinks } from "@/components/NavLinks";
 import { ProfileProvider } from "@/components/ProfileProvider";
 import { SettingsButton } from "@/components/settings/SettingsButton";
+import { Tracker } from "@/components/Tracker";
 import { gaId, siteUrl, siteVerification } from "@/lib/config";
 import { HOME_DESCRIPTION, HOME_TITLE, SITE_NAME } from "@/lib/seo";
 import { themeScript } from "@/lib/theme";
@@ -65,6 +66,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Link href="/privacy">Privacy</Link>
           </footer>
         </ProfileProvider>
+        <Tracker />
         {ga ? <Analytics id={ga} nonce={nonce} /> : null}
       </body>
     </html>

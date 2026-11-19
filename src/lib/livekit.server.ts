@@ -156,3 +156,52 @@ export async function markMatched(cfg: LiveKitConfig, identity: string, roomId: 
 export async function ensureLoungeRoom(cfg: LiveKitConfig): Promise<void> {
   await service(cfg).createRoom({ name: LOUNGE_ROOM, emptyTimeout: 600, departureTimeout: 30, maxParticipants: 1000 });
 }
+
+export type AdminParticipant = { identity: string; name: string; joinedAt: number; publishing: string[] };
+export type AdminRoom = {
+  id: string;
+  label: string;
+  meta: RoomMeta | null;
+  kind: "room" | "stranger" | "lounge" | "queue";
+  createdAt: number;
+  people: AdminParticipant[];
+};
+
+/** Every open room, private and stranger rooms included, with who is in each. For the admin only. */
+export async function adminRooms(cfg: LiveKitConfig): Promise<AdminRoom[]> {
+  const svc = service(cfg);
+  const rooms = await svc.listRooms();
+  const out = await Promise.all(
+    rooms.map(async (room): Promise<AdminRoom> => {
+      const meta = parseMeta(room.metadata);
+      const people = await svc.listParticipants(room.name).catch(() => []);
+      const kind =
+        room.name === LOUNGE_ROOM ? "lounge" : room.name === QUEUE_ROOM ? "queue" : meta?.visibility === "stranger" ? "stranger" : "room";
+      const label =
+        kind === "lounge" ? "Global chat" : kind === "queue" ? "Waiting for a stranger" : kind === "stranger" ? "Stranger chat" : (meta?.title ?? room.name);
+      return {
+        id: room.name,
+        label,
+        meta,
+        kind,
+        createdAt: Number(room.creationTime) * 1000,
+        people: people.filter(isPresent).map((p) => ({
+          identity: p.identity,
+          name: p.name || p.identity,
+          joinedAt: Number(p.joinedAt) * 1000,
+          publishing: p.tracks.map((t) => (t.source === TrackSource.SCREEN_SHARE ? "screen" : t.type === 1 ? "camera" : "mic")),
+        })),
+      };
+    }),
+  );
+  const order = { lounge: 0, room: 1, stranger: 2, queue: 3 } as const;
+  return out.sort((a, b) => order[a.kind] - order[b.kind] || b.people.length - a.people.length);
+}
+
+export async function closeRoom(cfg: LiveKitConfig, id: string): Promise<void> {
+  await service(cfg).deleteRoom(id);
+}
+
+export async function removePerson(cfg: LiveKitConfig, room: string, identity: string): Promise<void> {
+  await service(cfg).removeParticipant(room, identity);
+}
