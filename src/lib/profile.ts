@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 
 /** Avatar colours. All are light enough for dark initials, on both themes. */
 export const AVATAR_COLORS = [

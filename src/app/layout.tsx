@@ -7,22 +7,22 @@ import { NavLinks } from "@/components/NavLinks";
 import { ProfileProvider } from "@/components/ProfileProvider";
 import { SettingsButton } from "@/components/settings/SettingsButton";
 import { gaId, siteUrl, siteVerification } from "@/lib/config";
+import { HOME_DESCRIPTION, HOME_TITLE, SITE_NAME } from "@/lib/seo";
 import { themeScript } from "@/lib/theme";
 import "./globals.css";
 
-const description =
-  "Video, voice and text rooms in your browser. Pick a name, start a room, join one that's live, or meet a stranger one-to-one. No sign-up.";
+const description = HOME_DESCRIPTION;
 
 export async function generateMetadata(): Promise<Metadata> {
   const verification = siteVerification();
   return {
     metadataBase: new URL(siteUrl()),
-    title: { default: "Zaproom: video, voice and chat rooms", template: "%s | Zaproom" },
+    title: { default: HOME_TITLE, template: `%s | ${SITE_NAME}` },
     description,
     applicationName: "Zaproom",
     alternates: { canonical: "/" },
-    openGraph: { type: "website", siteName: "Zaproom", title: "Zaproom", description, url: "/" },
-    twitter: { card: "summary_large_image", title: "Zaproom", description },
+    openGraph: { type: "website", siteName: SITE_NAME, title: HOME_TITLE, description, url: "/", locale: "en_US" },
+    twitter: { card: "summary_large_image", title: HOME_TITLE, description },
     robots: { index: true, follow: true },
     ...(verification ? { verification: { google: verification } } : {}),
   };

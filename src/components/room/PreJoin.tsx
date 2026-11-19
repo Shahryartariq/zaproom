@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useState, useSyncExternalStore } from "react";
 import { Avatar } from "../Avatar";
 import { Icon } from "../Icon";
+import { preloadLive } from "../live";
 import { ProfileFields } from "../ProfileFields";
 import { useProfileDraft } from "../useProfileDraft";
 import type { Connection, MediaChoices, RoomInfo } from "./types";
@@ -46,7 +47,7 @@ export function PreJoin({ info, onJoin }: Props) {
   const inside = info.count === 0 ? "Nobody's here yet" : `${info.count} ${info.count === 1 ? "person" : "people"} inside`;
 
   return (
-    <form className="prejoin" onSubmit={join} noValidate>
+    <form className="prejoin" onSubmit={join} onFocus={preloadLive} onPointerEnter={preloadLive} noValidate>
       <div className="preview" aria-label="Your preview">
         {!voice && media.videoOn ? (
           <video ref={bindVideo} autoPlay playsInline muted />

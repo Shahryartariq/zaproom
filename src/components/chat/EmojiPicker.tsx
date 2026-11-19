@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { EMOJI_GROUPS, RECENT_KEY, insertAt, parseRecent, pushRecent, searchEmoji, type Emoji, type EmojiGroup } from "@/lib/emoji";
 import { Icon } from "../Icon";
+import { fitHeight } from "./fitHeight";
 
 /**
  * Wires a textarea to the picker: inserts the emoji at the caret (replacing any
@@ -20,8 +21,7 @@ export function useEmojiInsert(
     const el = ref.current;
     if (caret.current === null || !el) return;
     el.setSelectionRange(caret.current, caret.current);
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+    fitHeight(el);
     caret.current = null;
   }, [ref, text]);
 

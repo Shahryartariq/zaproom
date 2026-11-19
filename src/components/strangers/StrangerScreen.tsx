@@ -1,12 +1,12 @@
 "use client";
 
-import { Room } from "livekit-client";
+import type { Room } from "livekit-client";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Avatar } from "../Avatar";
 import { Icon } from "../Icon";
 import { ProfileFields } from "../ProfileFields";
-import { Call } from "../room/Call";
+import { Call, preloadLive } from "../live";
 import type { Connection, RoomInfo } from "../room/types";
 import { useProfileDraft } from "../useProfileDraft";
 
@@ -49,7 +49,8 @@ export function StrangerScreen() {
         if (!res.ok || !data.token || !data.url || !data.ticket) throw new Error(data.error ?? "Couldn't join the line.");
 
         // Being connected to the hidden queue room is what keeps your place in line.
-        const room = new Room();
+        const { Room } = await import("livekit-client");
+        const room: Room = new Room();
         let stopped = false;
         let timer: ReturnType<typeof setTimeout> | undefined;
         queue.current = {
@@ -187,6 +188,8 @@ export function StrangerScreen() {
           </ul>
           <form
             className="panel start-form"
+            onFocus={preloadLive}
+            onPointerEnter={preloadLive}
             onSubmit={(e) => {
               e.preventDefault();
               void search();

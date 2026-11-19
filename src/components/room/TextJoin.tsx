@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Icon } from "../Icon";
+import { preloadLive } from "../live";
 import { ProfileFields } from "../ProfileFields";
 import { useProfileDraft } from "../useProfileDraft";
 import type { Connection, RoomInfo } from "./types";
@@ -36,7 +37,7 @@ export function TextJoin({ info, onJoin }: { info: RoomInfo; onJoin: (conn: Conn
   const inside = info.count === 0 ? "Nobody's here yet" : `${info.count} ${info.count === 1 ? "person" : "people"} inside`;
 
   return (
-    <form className="strangers" onSubmit={join} noValidate>
+    <form className="strangers" onSubmit={join} onFocus={preloadLive} onPointerEnter={preloadLive} noValidate>
       <div className="room-facts">
         <span className="chip">
           <Icon name={info.visibility === "public" ? "globe" : "lock"} />

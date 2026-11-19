@@ -1,6 +1,5 @@
 "use client";
 
-import { DisconnectReason } from "livekit-client";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "../Icon";
@@ -8,7 +7,7 @@ import { ProfileFields } from "../ProfileFields";
 import { useProfile } from "../ProfileProvider";
 import type { Connection } from "../room/types";
 import { useProfileDraft } from "../useProfileDraft";
-import { ChatApp } from "./ChatApp";
+import { ChatApp, preloadLive } from "../live";
 
 const DEVICE = "zaproom:device";
 const STORAGE = "zaproom:chat:lounge";
@@ -85,7 +84,7 @@ export function LoungeScreen() {
         announceJoins={false}
         onDisconnected={(reason) => {
           if (attempt.current !== current) return;
-          if (reason === DisconnectReason.DUPLICATE_IDENTITY) setPhase({ step: "elsewhere" });
+          if (reason === "elsewhere") setPhase({ step: "elsewhere" });
           else setPhase({ step: "gate", note: "You were disconnected. Join again to keep chatting." });
         }}
       />
@@ -119,6 +118,8 @@ export function LoungeScreen() {
       </ul>
       <form
         className="panel start-form"
+        onFocus={preloadLive}
+        onPointerEnter={preloadLive}
         onSubmit={(e) => {
           e.preventDefault();
           const p = draft.commit();

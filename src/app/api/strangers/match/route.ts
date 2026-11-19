@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import { liveKitConfig } from "@/lib/config";
 import { NOT_CONFIGURED, error, json, limited, readBody, sameOrigin } from "@/lib/http";
 import { createRoom, markMatched, mintToken, queueEntries } from "@/lib/livekit.server";

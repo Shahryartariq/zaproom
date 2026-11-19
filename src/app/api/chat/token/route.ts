@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import { liveKitConfig } from "@/lib/config";
 import { DEVICE_KEY, deviceIdentity } from "@/lib/device";
 import { NOT_CONFIGURED, error, json, limited, readBody, sameOrigin } from "@/lib/http";

@@ -10,6 +10,7 @@ import { Avatar } from "../Avatar";
 import { Icon } from "../Icon";
 import { useSettings } from "../settings/useSettings";
 import { EmojiPicker, useEmojiInsert } from "./EmojiPicker";
+import { fitHeight } from "./fitHeight";
 import type { ChatEngine } from "./useChatEngine";
 
 type Props = {
@@ -368,9 +369,7 @@ function Conversation({
             setText(e.target.value);
             if (error) setError(null);
             if (e.target.value) sendTyping();
-            // Grow with the text, up to the CSS max height.
-            e.target.style.height = "auto";
-            e.target.style.height = `${e.target.scrollHeight}px`;
+            fitHeight(e.target);
           }}
           onKeyDown={(e) => {
             if (e.key !== "Enter" || e.nativeEvent.isComposing) return;

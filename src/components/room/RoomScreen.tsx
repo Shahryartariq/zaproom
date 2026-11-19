@@ -1,12 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRoomContext } from "@livekit/components-react";
 import { useEffect, useState } from "react";
-import { DisconnectReason } from "livekit-client";
-import { ChatApp } from "../chat/ChatApp";
-import { Icon } from "../Icon";
-import { Call } from "./Call";
+import { Call, ChatApp, LeaveButton } from "../live";
 import { CopyInvite } from "./CopyInvite";
 import { PreJoin } from "./PreJoin";
 import { TextJoin } from "./TextJoin";
@@ -120,9 +116,9 @@ export function RoomScreen({ id }: { id: string }) {
             step: "left",
             info,
             reason:
-              reason === DisconnectReason.CLIENT_INITIATED
+              reason === "left"
                 ? "You can rejoin while the room is open."
-                : reason === DisconnectReason.ROOM_DELETED || reason === DisconnectReason.ROOM_CLOSED
+                : reason === "closed"
                   ? "The room closed."
                   : "The connection dropped. Check your internet and rejoin.",
           })
@@ -144,15 +140,5 @@ export function RoomScreen({ id }: { id: string }) {
       media={state.media}
       onLeave={(reason) => setState({ step: "left", info: state.info, reason })}
     />
-  );
-}
-
-function LeaveButton() {
-  const room = useRoomContext();
-  return (
-    <button className="btn danger" onClick={() => void room.disconnect()}>
-      <Icon name="leave" />
-      <span className="text">Leave</span>
-    </button>
   );
 }

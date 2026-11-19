@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 
 /**
  * Text chat travels over LiveKit data packets. The SFU stamps every packet with the

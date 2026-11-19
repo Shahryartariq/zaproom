@@ -169,10 +169,12 @@ test.describe("security and SEO", () => {
 
   test("keeps rooms out of search engines", async ({ request }) => {
     const robots = await (await request.get("/robots.txt")).text();
-    expect(robots).toContain("Disallow: /r/");
     expect(robots).toContain("Disallow: /api/");
+    // Room pages must stay crawlable, or search engines never see their noindex.
+    expect(robots).not.toContain("Disallow: /r/");
+    expect(robots).toMatch(/Sitemap: https?:\/\/\S+\/sitemap\.xml/);
     const sitemap = await (await request.get("/sitemap.xml")).text();
-    expect(sitemap).toContain("/strangers");
+    for (const path of ["/chat", "/strangers", "/privacy"]) expect(sitemap).toContain(`${path}</loc>`);
     expect(sitemap).not.toContain("/r/");
   });
 
@@ -182,13 +184,86 @@ test.describe("security and SEO", () => {
     const html = (await res?.text()) ?? "";
     expect(html).toContain('<meta name="robots" content="noindex, nofollow"');
     expect(html).toContain("<title>Join a room | Zaproom</title>");
+    // Link-only rooms get a generic invite card that never names the room.
+    expect(html).toContain(`<meta property="og:title" content="You&#x27;re invited to a room on Zaproom"`);
+    expect(html).toContain('<meta property="og:image"');
   });
 
   test("has Open Graph tags and an image", async ({ page, request }) => {
     await page.goto("/");
-    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", "Zaproom");
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", /^Zaproom: free video, voice and text chat rooms$/);
     const img = await request.get("/opengraph-image");
     expect(img.headers()["content-type"]).toBe("image/png");
+  });
+
+  test("every page has its own title, description, canonical and social card", async ({ request }) => {
+    const seen = new Set<string>();
+    for (const path of ["/", "/chat", "/strangers", "/privacy"]) {
+      const html = await (await request.get(path)).text();
+      const meta = (attr: string, key: string) => html.match(new RegExp(`<meta ${attr}="${key}" content="([^"]*)"`))?.[1];
+      const title = html.match(/<title>([^<]+)<\/title>/)?.[1] ?? "";
+      const description = meta("name", "description") ?? "";
+      const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)?.[1] ?? "";
+      expect(title.length, path).toBeGreaterThan(10);
+      expect(title.length, path).toBeLessThanOrEqual(65);
+      expect(description.length, path).toBeGreaterThan(50);
+      expect(description.length, path).toBeLessThanOrEqual(160);
+      expect(new URL(canonical).pathname.replace(/\/$/, "") || "/", path).toBe(path);
+      // The social card points at this page, not the home page.
+      expect(meta("property", "og:url"), path).toBe(canonical);
+      expect(meta("property", "og:description"), path).toBe(description);
+      expect(meta("property", "og:image"), path).toBeTruthy();
+      expect(meta("name", "twitter:card"), path).toBe("summary_large_image");
+      expect(html.match(/<h1[\s>]/g)?.length ?? 0, path).toBeLessThanOrEqual(1);
+      expect(seen.has(title), `${path} repeats a title`).toBe(false);
+      seen.add(title);
+    }
+  });
+
+  test("the home page describes the app as structured data", async ({ request }) => {
+    const html = await (await request.get("/")).text();
+    const raw = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1];
+    expect(raw).toBeTruthy();
+    const data = JSON.parse(raw ?? "{}") as { "@graph": { "@type": string; name: string; offers?: { price: string } }[] };
+    const app = data["@graph"].find((n) => n["@type"] === "WebApplication");
+    expect(app?.name).toBe("Zaproom");
+    expect(app?.offers?.price).toBe("0");
+    expect(data["@graph"].some((n) => n["@type"] === "WebSite")).toBe(true);
+  });
+
+  test("installs with PNG and maskable icons, and an Apple touch icon", async ({ request }) => {
+    const manifest = (await (await request.get("/manifest.webmanifest")).json()) as { icons: { src: string; sizes: string; purpose?: string }[] };
+    expect(manifest.icons.map((i) => i.sizes)).toEqual(expect.arrayContaining(["192x192", "512x512"]));
+    expect(manifest.icons.some((i) => i.purpose === "maskable")).toBe(true);
+    for (const icon of manifest.icons) expect((await request.get(icon.src)).ok(), icon.src).toBe(true);
+    const html = await (await request.get("/")).text();
+    const apple = html.match(/<link rel="apple-touch-icon" href="([^"]+)"/)?.[1];
+    expect(apple).toBeTruthy();
+    expect((await request.get(apple ?? "")).headers()["content-type"]).toBe("image/png");
+  });
+
+  test("no Content-Security-Policy violations while pages load", async ({ page }) => {
+    await page.addInitScript(() => {
+      (window as unknown as { __csp: string[] }).__csp = [];
+      document.addEventListener("securitypolicyviolation", (e) =>
+        (window as unknown as { __csp: string[] }).__csp.push(`${e.violatedDirective} ${e.blockedURI}`),
+      );
+    });
+    for (const path of ["/", "/chat", "/strangers", "/privacy"]) {
+      await page.goto(path);
+      await page.waitForLoadState("networkidle");
+      expect(await page.evaluate(() => (window as unknown as { __csp: string[] }).__csp), path).toEqual([]);
+    }
+  });
+
+  test("the call library loads only when someone joins", async ({ page }) => {
+    const scripts: string[] = [];
+    page.on("response", async (res) => {
+      if (res.url().endsWith(".js")) scripts.push(await res.text().catch(() => ""));
+    });
+    for (const path of ["/", "/chat", "/strangers"]) await page.goto(path, { waitUntil: "networkidle" });
+    // livekit-client registers this protocol string; none of the loaded code should contain it.
+    expect(scripts.some((s) => s.includes("livekit.SignalRequest"))).toBe(false);
   });
 });
 
