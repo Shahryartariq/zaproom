@@ -4,7 +4,9 @@ import { useState } from "react";
 import { Icon } from "../Icon";
 import { preloadLive } from "../live";
 import { ProfileFields } from "../ProfileFields";
+import { useHydrated } from "../useHydrated";
 import { useProfileDraft } from "../useProfileDraft";
+import { postJson } from "@/lib/fetch-json";
 import type { Connection, RoomInfo } from "./types";
 
 /** Joining a text room: just a name, no camera or microphone. */
@@ -12,6 +14,7 @@ export function TextJoin({ info, onJoin }: { info: RoomInfo; onJoin: (conn: Conn
   const draft = useProfileDraft();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const hydrated = useHydrated();
 
   async function join(e: React.FormEvent) {
     e.preventDefault();
@@ -19,19 +22,10 @@ export function TextJoin({ info, onJoin }: { info: RoomInfo; onJoin: (conn: Conn
     if (!profile) return;
     setBusy(true);
     setError(null);
-    try {
-      const res = await fetch("/api/token", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ roomId: info.id, ...profile }),
-      });
-      const data = (await res.json()) as Partial<Connection> & { error?: string };
-      if (!res.ok || !data.token || !data.url) throw new Error(data.error ?? "Couldn't join the room.");
-      onJoin({ token: data.token, url: data.url });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't join the room.");
-      setBusy(false);
-    }
+    const result = await postJson<Connection>("/api/token", { roomId: info.id, ...profile }, "Couldn't join the room.");
+    if (result.ok && result.data.token && result.data.url) return onJoin({ token: result.data.token, url: result.data.url });
+    setError(result.ok ? "Couldn't join the room." : result.error);
+    setBusy(false);
   }
 
   const inside = info.count === 0 ? "Nobody's here yet" : `${info.count} ${info.count === 1 ? "person" : "people"} inside`;
@@ -68,7 +62,7 @@ export function TextJoin({ info, onJoin }: { info: RoomInfo; onJoin: (conn: Conn
             {error}
           </p>
         ) : null}
-        <button className="btn primary big" type="submit" disabled={busy}>
+        <button className="btn primary big" type="submit" disabled={busy || !hydrated}>
           <Icon name="chat" />
           {busy ? "Joining…" : "Join chat"}
         </button>

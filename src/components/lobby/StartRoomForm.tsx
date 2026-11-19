@@ -5,7 +5,9 @@ import { useId, useState } from "react";
 import { createRoomSchema } from "@/lib/profile";
 import { Icon } from "../Icon";
 import { ProfileFields } from "../ProfileFields";
+import { useHydrated } from "../useHydrated";
 import { useProfileDraft } from "../useProfileDraft";
+import { postJson } from "@/lib/fetch-json";
 
 export function StartRoomForm({ disabled }: { disabled: boolean }) {
   const id = useId();
@@ -17,6 +19,7 @@ export function StartRoomForm({ disabled }: { disabled: boolean }) {
   const [kind, setKind] = useState<"video" | "voice" | "text">("video");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const hydrated = useHydrated();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,19 +31,10 @@ export function StartRoomForm({ disabled }: { disabled: boolean }) {
     }
     setBusy(true);
     setError(null);
-    try {
-      const res = await fetch("/api/rooms", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(parsed.data),
-      });
-      const data = (await res.json()) as { id?: string; error?: string };
-      if (!res.ok || !data.id) throw new Error(data.error ?? "Couldn't create the room.");
-      router.push(`/r/${data.id}?new=1`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't create the room.");
-      setBusy(false);
-    }
+    const result = await postJson<{ id: string }>("/api/rooms", parsed.data, "Couldn't create the room.");
+    if (result.ok && result.data.id) return router.push(`/r/${result.data.id}?new=1`);
+    setError(result.ok ? "Couldn't create the room." : result.error);
+    setBusy(false);
   }
 
   return (
@@ -105,7 +99,7 @@ export function StartRoomForm({ disabled }: { disabled: boolean }) {
           {error}
         </p>
       ) : null}
-      <button className="btn primary big" type="submit" disabled={busy || disabled}>
+      <button className="btn primary big" type="submit" disabled={busy || disabled || !hydrated}>
         {busy ? "Starting…" : "Start room"}
       </button>
     </form>

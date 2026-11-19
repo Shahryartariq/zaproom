@@ -6,7 +6,9 @@ import { Icon } from "../Icon";
 import { ProfileFields } from "../ProfileFields";
 import { useProfile } from "../ProfileProvider";
 import type { Connection } from "../room/types";
+import { useHydrated } from "../useHydrated";
 import { useProfileDraft } from "../useProfileDraft";
+import { CONNECT_FAILED, postJson } from "@/lib/fetch-json";
 import { ChatApp, preloadLive } from "../live";
 
 const DEVICE = "zaproom:device";
@@ -40,6 +42,7 @@ export function LoungeScreen() {
   const [phase, setPhase] = useState<Phase>({ step: "gate" });
   const attempt = useRef(0);
   const auto = useRef(false);
+  const hydrated = useHydrated();
 
   const join = useCallback(
     async (p: { name: string; color: string }) => {
@@ -47,18 +50,12 @@ export function LoungeScreen() {
       // first-time name would otherwise trigger the returning-visitor auto-join too.
       auto.current = true;
       setPhase({ step: "joining" });
-      try {
-        const res = await fetch("/api/chat/token", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ ...p, device: deviceKey() }),
-        });
-        const data = (await res.json()) as Partial<Connection> & { error?: string };
-        if (!res.ok || !data.token || !data.url) throw new Error(data.error ?? "Couldn't open the chat.");
+      const result = await postJson<Connection>("/api/chat/token", { ...p, device: deviceKey() }, "Couldn't open the chat.");
+      if (result.ok && result.data.token && result.data.url) {
         attempt.current += 1;
-        setPhase({ step: "chat", conn: { token: data.token, url: data.url }, attempt: attempt.current });
-      } catch (err) {
-        setPhase({ step: "gate", note: err instanceof Error ? err.message : "Couldn't open the chat." });
+        setPhase({ step: "chat", conn: { token: result.data.token, url: result.data.url }, attempt: attempt.current });
+      } else {
+        setPhase({ step: "gate", note: result.ok ? "Couldn't open the chat." : result.error });
       }
     },
     [],
@@ -85,6 +82,8 @@ export function LoungeScreen() {
         onDisconnected={(reason) => {
           if (attempt.current !== current) return;
           if (reason === "elsewhere") setPhase({ step: "elsewhere" });
+          else if (reason === "removed") setPhase({ step: "gate", note: "You were removed from the chat." });
+          else if (reason === "failed") setPhase({ step: "gate", note: CONNECT_FAILED });
           else setPhase({ step: "gate", note: "You were disconnected. Join again to keep chatting." });
         }}
       />
@@ -97,7 +96,15 @@ export function LoungeScreen() {
         <div>
           <h1>Chat is open in another tab</h1>
           <p>Zaproom chat works in one tab at a time, so your messages always reach the right place.</p>
-          <button className="btn primary" onClick={() => profile && void join(profile)}>
+          <button
+            className="btn primary"
+            onClick={() => {
+              // No saved name (private browsing, or storage cleared): ask for one again.
+              const p = profile ?? draft.commit();
+              if (p) void join(p);
+              else setPhase({ step: "gate" });
+            }}
+          >
             Use it here
           </button>
         </div>
@@ -133,7 +140,7 @@ export function LoungeScreen() {
             {phase.note}
           </p>
         ) : null}
-        <button className="btn primary big" type="submit" disabled={phase.step === "joining"}>
+        <button className="btn primary big" type="submit" disabled={phase.step === "joining" || !hydrated}>
           <Icon name="chat" />
           {phase.step === "joining" ? "Opening chat…" : "Open chat"}
         </button>

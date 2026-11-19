@@ -8,7 +8,7 @@ import { duration, flag } from "@/lib/visitors";
 export const metadata: Metadata = { title: "Visitors" };
 
 const DONE: Record<string, string> = { deleted: "Visitor deleted, with all their page views and activity." };
-const ERRORS: Record<string, string> = { delete: "That visitor couldn't be deleted. Tick the box to confirm and try again." };
+const ERRORS: Record<string, string> = { input: "That visitor couldn't be found." };
 
 export default async function AdminVisitors({ searchParams }: PageProps<"/admin/visitors">) {
   const params = await searchParams;

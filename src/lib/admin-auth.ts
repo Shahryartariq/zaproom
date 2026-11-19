@@ -1,5 +1,5 @@
 import "server-only";
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, scryptSync, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -12,23 +12,36 @@ export function adminPassword(): string | null {
   return value && value.length >= 12 ? value : null;
 }
 
-/** Signing key: changes when the password changes, so a new password signs everyone out. */
-function key(password: string): Buffer {
+/**
+ * Passwords only ever go through scrypt, a deliberately slow hash, so a leaked signing key
+ * or log can't be turned back into the password cheaply.
+ */
+function derive(password: string): Buffer {
   const pepper = process.env.ADMIN_SESSION_SECRET ?? process.env.LIVEKIT_API_SECRET ?? "";
-  return createHash("sha256").update(`zaproom-admin\0${password}\0${pepper}`).digest();
+  return scryptSync(password, `zaproom-admin-v1\0${pepper}`, 32, { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
 }
 
-const sign = (password: string, data: string) => createHmac("sha256", key(password)).update(data).digest("base64url");
+// The configured password's derived key, worked out once per server instance.
+let derived: { password: string; value: Buffer } | null = null;
+function passwordKey(password: string): Buffer {
+  if (derived?.password !== password) derived = { password, value: derive(password) };
+  return derived.value;
+}
 
-function same(a: string, b: string): boolean {
-  const x = createHash("sha256").update(a).digest();
-  const y = createHash("sha256").update(b).digest();
-  return timingSafeEqual(x, y);
+/** Signing key for sessions: changes with the password, so a new password signs everyone out. */
+const sign = (password: string, data: string) =>
+  createHmac("sha256", passwordKey(password)).update(`session\0${data}`).digest("base64url");
+
+function sameSignature(a: string, b: string): boolean {
+  const x = Buffer.from(a, "base64url");
+  const y = Buffer.from(b, "base64url");
+  return x.length === y.length && x.length > 0 && timingSafeEqual(x, y);
 }
 
 export function checkPassword(attempt: string): boolean {
   const password = adminPassword();
-  return !!password && same(attempt, password);
+  if (!password || attempt.length === 0 || attempt.length > 200) return false;
+  return timingSafeEqual(derive(attempt), passwordKey(password));
 }
 
 /** A session token: expiry time plus a signature over it. */
@@ -45,7 +58,7 @@ export function verifySession(token: string | undefined, now = Date.now()): bool
   const [exp, signature] = token.split(".");
   if (!exp || !signature || !/^\d{9,11}$/.test(exp)) return false;
   if (Number(exp) * 1000 < now) return false;
-  return same(signature, sign(password, exp));
+  return sameSignature(signature, sign(password, exp));
 }
 
 export async function isAdminRequest(): Promise<boolean> {

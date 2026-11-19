@@ -84,6 +84,73 @@ test.describe("pre-join", () => {
     await expect(page.getByText("This room doesn't exist or has closed.")).toBeVisible();
   });
 
+  test("a server hiccup offers Try again instead of calling the room closed", async ({ page }) => {
+    let calls = 0;
+    await page.route("**/api/rooms/abc-defg-hjk", (r) => {
+      calls += 1;
+      return calls === 1
+        ? r.fulfill({ status: 502, contentType: "text/html", body: "<html>Bad gateway</html>" })
+        : r.fulfill({ json: { id: "abc-defg-hjk", title: "Standup", topic: "", kind: "text", visibility: "public", count: 0 } });
+    });
+    await page.goto("/r/abc-defg-hjk");
+    await expect(page.getByRole("heading", { name: "Couldn't open the room" })).toBeVisible();
+    await expect(page.getByText(/server is having trouble/)).toBeVisible();
+    await page.getByRole("button", { name: "Try again" }).click();
+    await expect(page.getByRole("heading", { name: "Standup" })).toBeVisible();
+  });
+
+  test("a new room says it's ready and offers the invite link", async ({ page }) => {
+    await page.route("**/api/rooms/abc-defg-hjk", (r) =>
+      r.fulfill({ json: { id: "abc-defg-hjk", title: "Standup", topic: "", kind: "text", visibility: "private", count: 0 } }),
+    );
+    await page.goto("/r/abc-defg-hjk?new=1");
+    const notice = page.getByRole("status").filter({ hasText: "Your room is ready." });
+    await expect(notice).toBeVisible();
+    // The invite button sits next to the join form and must not submit it.
+    await notice.getByRole("button", { name: "Copy invite link" }).click();
+    await expect(page.getByRole("button", { name: "Join chat" })).toBeEnabled();
+    await page.goto("/r/abc-defg-hjk");
+    await expect(page.getByText("Your room is ready.")).toHaveCount(0);
+  });
+
+  test("a gateway error page while joining shows a plain sentence, not a parse error", async ({ page }) => {
+    await page.route("**/api/rooms/abc-defg-hjk", (r) =>
+      r.fulfill({ json: { id: "abc-defg-hjk", title: "Standup", topic: "", kind: "text", visibility: "public", count: 1 } }),
+    );
+    await page.route("**/api/token", (r) => r.fulfill({ status: 504, contentType: "text/html", body: "<html>Gateway timeout</html>" }));
+    await page.addInitScript(() => localStorage.setItem("zaproom:profile", JSON.stringify({ name: "Sam", color: "sky" })));
+    await page.goto("/r/abc-defg-hjk");
+    await page.getByRole("button", { name: "Join chat" }).click();
+    const alert = page.locator("form").getByRole("alert");
+    await expect(alert).toContainText("server is having trouble");
+    await expect(alert).not.toContainText("Unexpected token");
+  });
+
+  test("join buttons wait until the page is ready", async ({ page }) => {
+    await page.route("**/*.js", (r) => r.abort());
+    await page.goto("/");
+    // Without JavaScript the start button stays disabled, so a click can't reload the page.
+    await expect(page.locator("form.start-form").getByRole("button", { name: "Start room" })).toBeDisabled();
+  });
+
+  test("unknown pages say so and aren't indexed", async ({ page }) => {
+    const res = await page.goto("/no-such-page");
+    expect(res?.status()).toBe(404);
+    await expect(page).toHaveTitle("Page not found | Zaproom");
+    await expect(page.locator('meta[name="robots"]').first()).toHaveAttribute("content", /noindex/);
+  });
+
+  test("API and admin answers carry noindex headers", async ({ request }) => {
+    expect((await request.get("/api/rooms")).headers()["x-robots-tag"]).toBe("noindex, nofollow");
+    expect((await request.get("/admin/login")).headers()["x-robots-tag"]).toBe("noindex, nofollow");
+    expect((await request.get("/")).headers()["x-robots-tag"]).toBeUndefined();
+  });
+
+  test("cross-site posts are refused", async ({ request }) => {
+    const res = await request.post("/api/rooms", { headers: { "sec-fetch-site": "cross-site" }, data: {} });
+    expect(res.status()).toBe(403);
+  });
+
   test("404s malformed room links", async ({ page }) => {
     const res = await page.goto("/r/not-a-room");
     expect(res?.status()).toBe(404);

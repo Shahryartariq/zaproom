@@ -10,6 +10,7 @@ import { Tracker } from "@/components/Tracker";
 import { gaId, siteUrl, siteVerification } from "@/lib/config";
 import { HOME_DESCRIPTION, HOME_TITLE, SITE_NAME } from "@/lib/seo";
 import { themeScript } from "@/lib/theme";
+import { body, display } from "./fonts";
 import "./globals.css";
 
 const description = HOME_DESCRIPTION;
@@ -40,7 +41,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   const ga = gaId();
   return (
-    <html lang="en" data-theme="dark" suppressHydrationWarning>
+    <html lang="en" data-theme="dark" className={`${body.variable} ${display.variable}`} suppressHydrationWarning>
       <head>
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

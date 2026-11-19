@@ -1,4 +1,4 @@
-import { logEvent } from "@/lib/visitors.server";
+import { BLOCKED_MESSAGE, isBlockedRequest, logEvent } from "@/lib/visitors.server";
 import { liveKitConfig } from "@/lib/config";
 import { NOT_CONFIGURED, error, json, limited, readBody, sameOrigin } from "@/lib/http";
 import { ensureQueueRoom, mintToken } from "@/lib/livekit.server";
@@ -22,6 +22,7 @@ export async function POST(req: Request) {
 
   const body = await readBody(req, profileSchema);
   if ("response" in body) return body.response;
+  if (await isBlockedRequest()) return error(403, BLOCKED_MESSAGE);
 
   const identity = `st_${crypto.randomUUID()}`;
   try {

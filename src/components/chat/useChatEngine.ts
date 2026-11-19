@@ -2,6 +2,7 @@
 
 import { useParticipants, useRoomContext } from "@livekit/components-react";
 import { countMessage } from "@/lib/activity";
+import { MESSAGE_LIMIT, SenderLimit } from "@/lib/chat/flood";
 import { RoomEvent, type Participant, type RemoteParticipant } from "livekit-client";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import { CHAT_TOPIC, TYPING_TOPIC, decodePacket, encodePacket, newMessageId, prepareText } from "@/lib/chat/protocol";
@@ -90,6 +91,7 @@ export function useChatEngine({ storageKey, groupName, announceJoins }: Options)
 
   // Incoming packets.
   useEffect(() => {
+    const flood = new SenderLimit(MESSAGE_LIMIT.max, MESSAGE_LIMIT.windowMs);
     const onData = (payload: Uint8Array, from?: RemoteParticipant, _kind?: unknown, topic?: string) => {
       if (!from) return;
       const packet = decodePacket(payload);
@@ -107,6 +109,7 @@ export function useChatEngine({ storageKey, groupName, announceJoins }: Options)
 
       if (packet.t === "msg") {
         if (packet.to && packet.to !== self) return;
+        if (!flood.allow(from.identity)) return;
         const key = packet.to ? dmKey(from.identity) : GROUP;
         const person = toPerson(from);
         const message: ChatMessage = {
