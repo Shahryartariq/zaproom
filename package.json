@@ -43,7 +43,7 @@
     "@types/ua-parser-js": "^0.7.39",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.4.6",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "vitest": "^5.1.0"
   },
   "pnpm": {
